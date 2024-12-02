@@ -116,9 +116,9 @@ path = "../../src/lib.rs"
 # target = "x86_64-unkown-linux-gnu"
 
 
-# [target.'cfg(target_arch = "wasm32")'.dependencies]
-# console_error_panic_hook = "0.1.7"
-# web-sys = "0.3.72"
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1.7"
+web-sys = "0.3.72"
 # # wasm-bindgen = "0.2"
 
 # [patch.crates-io]
