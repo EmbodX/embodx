@@ -65,6 +65,7 @@ impl EditorWindow for ShowcaseWindow {
                 format!("{urdf_file_root}/spot_ros/spot_description/urdf/spot.urdf").to_string(),
             ));
         }
+        #[cfg(feature = "gspat")]
         if ui
             .button("load gaussian splatting scene (garden)")
             .clicked()

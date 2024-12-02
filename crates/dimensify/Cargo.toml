@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-# default = []
-default = ["gspat"]
+default = []
+# default = ["gspat"]
 gspat   = ["bevy_gaussian_splatting"]
 
 [dependencies]
@@ -70,7 +70,7 @@ bevy_gaussian_splatting = { version = "2.7.5", default-features = false, optiona
   "planar",
   "sort_std",
   "webgl2",
-  "viewer",
+  # "viewer",
 ] }
 reqwest                 = "0.12.9"
 # bevy_web_asset = "0.9.0"
