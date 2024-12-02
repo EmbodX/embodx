@@ -15,7 +15,7 @@ log = "0.4.22"
 
 
 # main dependencies
-dimensify = "*"
+dimensify = { path = "../../../dimensify/crates/dimensify" }
 bevy = { version = "0.14", features = ["jpeg"] }
 bevy_panorbit_camera = { version = "0.20.1", features = [
     # "bevy_egui"
@@ -90,9 +90,9 @@ serde   = "1.0.210"
 name = "embodx"
 path = "../../src/main.rs"
 
-# [lib]
-# name = "dimensify"
-# path = "../../src/lib.rs"
+[lib]
+name = "embodx"
+path = "../../src/lib.rs"
 
 # [profile.release]
 # opt-level = 's'

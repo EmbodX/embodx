@@ -1,61 +1,63 @@
-pub mod coordinate_transform;
-mod math_trait_ext;
-mod pipe;
-mod spatial;
-mod urdf;
+pub use dimensify::util::*;
 
-pub mod macros;
-pub mod traits;
+// pub mod coordinate_transform;
+// mod math_trait_ext;
+// mod pipe;
+// mod spatial;
+// mod urdf;
 
-use eyre::Result;
+// pub mod macros;
+// // pub mod traits;
 
-pub fn initialise() -> Result<()> {
-    setup_hooks();
-    color_eyre::install()
-}
+// use eyre::Result;
 
-macro_rules! single {
-    ($query:expr) => {
-        match $query.get_single() {
-            Ok(q) => q,
-            _ => {
-                return;
-            }
-        }
-    };
-}
+// pub fn initialise() -> Result<()> {
+//     setup_hooks();
+//     color_eyre::install()
+// }
 
-macro_rules! single_mut {
-    ($query:expr) => {
-        match $query.get_single_mut() {
-            Ok(q) => q,
-            _ => {
-                return;
-            }
-        }
-    };
-}
+// macro_rules! single {
+//     ($query:expr) => {
+//         match $query.get_single() {
+//             Ok(q) => q,
+//             _ => {
+//                 return;
+//             }
+//         }
+//     };
+// }
 
-pub(crate) use spatial::*;
-pub(crate) use urdf::*;
+// macro_rules! single_mut {
+//     ($query:expr) => {
+//         match $query.get_single_mut() {
+//             Ok(q) => q,
+//             _ => {
+//                 return;
+//             }
+//         }
+//     };
+// }
 
-pub fn setup_hooks() {
-    #[cfg(debug_assertions)]
-    #[cfg(target_arch = "wasm32")]
-    {
-        console_error_panic_hook::set_once();
-    }
-}
+// pub(crate) use spatial::*;
+// pub(crate) use urdf::*;
 
-pub fn log(_msg: &str) {
-    #[cfg(debug_assertions)]
-    #[cfg(target_arch = "wasm32")]
-    {
-        web_sys::console::log_1(&_msg.into());
-    }
-    #[cfg(debug_assertions)]
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        println!("{}", _msg);
-    }
-}
+// pub fn setup_hooks() {
+//     #[cfg(debug_assertions)]
+//     #[cfg(target_arch = "wasm32")]
+//     {
+//         console_error_panic_hook::set_once();
+//     }
+// }
+
+// pub fn log(_msg: &str) {
+//     #[cfg(debug_assertions)]
+//     #[cfg(target_arch = "wasm32")]
+//     {
+//         web_sys::console::log_1(&_msg.into());
+//     }
+//     #[cfg(debug_assertions)]
+//     #[cfg(not(target_arch = "wasm32"))]
+//     {
+//         println!("{}", _msg);
+//     }
+// }
