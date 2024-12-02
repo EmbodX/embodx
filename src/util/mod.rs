@@ -39,7 +39,6 @@ macro_rules! single_mut {
 pub(crate) use spatial::*;
 pub(crate) use urdf::*;
 
-
 pub fn setup_hooks() {
     #[cfg(debug_assertions)]
     #[cfg(target_arch = "wasm32")]
@@ -47,7 +46,6 @@ pub fn setup_hooks() {
         console_error_panic_hook::set_once();
     }
 }
-
 
 pub fn log(_msg: &str) {
     #[cfg(debug_assertions)]
