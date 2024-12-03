@@ -1,4 +1,7 @@
-use bevy::{color::palettes::css::{BLUE, GREEN, RED}, prelude::*};
+use bevy::{
+    color::palettes::css::{BLUE, GREEN, RED},
+    prelude::*,
+};
 use bevy_2d_line::{Line, LineRenderingPlugin};
 
 fn main() {
@@ -18,11 +21,7 @@ fn setup(mut commands: Commands) {
         Vec2::new(200.0, 0.0),
     ];
 
-    let colors = vec![
-        RED.into(),
-        GREEN.into(),
-        BLUE.into(),
-    ];
+    let colors = vec![RED.into(), GREEN.into(), BLUE.into()];
 
     commands.spawn(Line {
         points,

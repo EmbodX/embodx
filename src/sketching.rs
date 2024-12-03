@@ -320,11 +320,9 @@ fn mouse_click_event(
                     // if let Some(mut line) = line_storage.lines.pop() {
                     // let camera_transform = *main_camera_transform;
 
-
                     // spawn it a little bit in front of the camera
                     let mut transform = main_camera_transform.compute_transform();
                     transform.translation += main_camera_transform.forward() * 0.5;
-
 
                     screenshot_manager
                         .take_screenshot(main_window.single(), move |image| {

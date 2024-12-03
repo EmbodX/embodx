@@ -63,7 +63,6 @@ fn setup(
     //     ..default()
     // });
 
-
     // let cube_h = meshes.add(Cuboid::new(0.1, 0.1, 0.1));
     // let sphere_h = meshes.add(Sphere::new(0.125).mesh().uv(32, 18));
 

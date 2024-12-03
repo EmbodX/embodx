@@ -1,4 +1,8 @@
-use bevy::{color::palettes::css::{BLUE, RED}, math::VectorSpace, prelude::*};
+use bevy::{
+    color::palettes::css::{BLUE, RED},
+    math::VectorSpace,
+    prelude::*,
+};
 use bevy_2d_line::{Line, LineRenderingPlugin};
 
 fn main() {
@@ -48,7 +52,11 @@ fn cubic_bezier(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32) -> Vec2 {
     return p0 * mt3 + p1 * 3.0 * mt2 * t + p2 * 3.0 * mt * t2 + p3 * t3;
 }
 
-fn generate_gradient(start_color: LinearRgba, end_color: LinearRgba, steps: usize) -> Vec<LinearRgba> {
+fn generate_gradient(
+    start_color: LinearRgba,
+    end_color: LinearRgba,
+    steps: usize,
+) -> Vec<LinearRgba> {
     let mut colors = Vec::with_capacity(steps);
     for i in 0..steps {
         let t = i as f32 / (steps - 1) as f32;
