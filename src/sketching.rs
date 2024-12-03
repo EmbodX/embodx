@@ -19,8 +19,30 @@ struct Sketch {
 
 const SHOW_DEBUG_RAYCAST: bool = false;
 
+// we will use separate render layers for the 2D lines and ciricle mesh, as
+// we want to avoid bloom on 2d lines
 const RENDER_LAYER_2D_BLOOM: usize = 1;
 const RENDER_LAYER_2D_NORMAL: usize = 2;
+
+/// Spawns a circle mesh with bloom effect
+fn spawn_bloom_sketch_endpoint(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<ColorMaterial>,
+    color: Color,
+    transform: Transform,
+) {
+    commands
+        .spawn(MaterialMesh2dBundle {
+            mesh: meshes.add(Circle::new(18.)).into(),
+            // 4. Put something bright in a dark environment to see the effect
+            material: materials.add(color),
+            transform,
+            ..default()
+        })
+        .insert(RenderLayers::layer(RENDER_LAYER_2D_BLOOM))
+        .insert(SketchingEndPoint);
+}
 
 #[derive(Component)]
 struct LineTargetTransition {
@@ -98,7 +120,7 @@ struct Sketched3dLines {
 #[derive(Event, Clone, Debug)]
 struct ScreenshotTaken {
     img: Image,
-    transform: GlobalTransform,
+    transform: Transform,
 }
 
 #[derive(Component)]
@@ -198,7 +220,7 @@ fn handle_screenshot_taken_event(
                 ..default()
             })
             .insert(Name::new("Screenshot mesh"))
-            .insert(event.transform.compute_transform())
+            .insert(event.transform)
             // .insert(NotShadowCaster)
             ;
 
@@ -296,11 +318,18 @@ fn mouse_click_event(
 
                 if let Some(line) = line_storage.lines.last_mut() {
                     // if let Some(mut line) = line_storage.lines.pop() {
-                    let camera_transform = *main_camera_transform;
+                    // let camera_transform = *main_camera_transform;
+
+
+                    // spawn it a little bit in front of the camera
+                    let mut transform = main_camera_transform.compute_transform();
+                    transform.translation += main_camera_transform.forward() * 0.5;
+
+
                     screenshot_manager
                         .take_screenshot(main_window.single(), move |image| {
                             screenshot_event_sender.send(ScreenshotTaken {
-                                transform: camera_transform,
+                                transform,
                                 img: image,
                             });
                         })
@@ -416,8 +445,6 @@ fn mouse_click_event(
         // There is only one primary window, so we can similarly get it from the query:
         let window = q_window.single();
 
-        dbg!(window.cursor_position());
-
         // check if the cursor is inside the window and get its position
         // then, ask bevy to convert into world coordinates, and truncate to discard Z
         if let Some(world_position) = window
@@ -426,20 +453,13 @@ fn mouse_click_event(
             .map(|ray| ray.origin.truncate())
         {
             // Circle mesh (start point)
-            commands
-                .spawn(MaterialMesh2dBundle {
-                    mesh: meshes.add(Circle::new(18.)).into(),
-                    // 4. Put something bright in a dark environment to see the effect
-                    material: materials.add(Color::srgb(7.5, 0.0, 7.5)),
-                    transform: Transform::from_translation(Vec3::new(
-                        world_position.x,
-                        world_position.y,
-                        1.,
-                    )),
-                    ..default()
-                })
-                .insert(RenderLayers::layer(RENDER_LAYER_2D_BLOOM))
-                .insert(SketchingEndPoint);
+            spawn_bloom_sketch_endpoint(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                Color::srgb(7.5, 0.0, 7.5),
+                Transform::from_translation(Vec3::new(world_position.x, world_position.y, 1.)),
+            );
         }
 
         // create the storage
@@ -457,20 +477,13 @@ fn mouse_click_event(
             .map(|ray| ray.origin.truncate())
         {
             // Circle mesh (end point)
-            commands
-                .spawn(MaterialMesh2dBundle {
-                    mesh: meshes.add(Circle::new(18.)).into(),
-                    // 4. Put something bright in a dark environment to see the effect
-                    material: materials.add(Color::srgb(0.5, 7.5, 7.5)),
-                    transform: Transform::from_translation(Vec3::new(
-                        world_position.x,
-                        world_position.y,
-                        1.,
-                    )),
-                    ..default()
-                })
-                .insert(RenderLayers::layer(RENDER_LAYER_2D_BLOOM))
-                .insert(SketchingEndPoint);
+            spawn_bloom_sketch_endpoint(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                Color::srgb(0.5, 7.5, 7.5),
+                Transform::from_translation(Vec3::new(world_position.x, world_position.y, 1.)),
+            );
         }
     }
     if buttons.pressed(MouseButton::Right) {
