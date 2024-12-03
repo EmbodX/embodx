@@ -1,9 +1,10 @@
-use bevy::{app::PluginGroupBuilder, log::LogPlugin, prelude::*};
+use bevy::{app::PluginGroupBuilder, log::LogPlugin, prelude::*, transform::commands};
+use bevy_atmosphere::plugin::{AtmosphereCamera, AtmospherePlugin};
 // use bevy_egui::EguiPlugin;
 // use bevy_web_asset::WebAssetPlugin;
 use rapier3d::parry::simba::scalar::SupersetOf;
 
-use dimensify::SimPlugin;
+use dimensify::{camera::main_camera::MainCamera, SimPlugin};
 
 // pub mod assets_loader;
 // pub mod camera;
@@ -21,6 +22,22 @@ pub mod util;
 
 pub struct RobotSimPlugin;
 
+#[cfg(not(target_arch = "wasm32"))]
+fn insert_atmosphere_cam(app: &mut App) {
+    app.add_systems(
+        PostStartup,
+        |mut commands: Commands,
+         q_main_camera: Query<Entity, (With<MainCamera>, Without<AtmosphereCamera>)>| {
+            for main_camera in q_main_camera.iter() {
+                commands
+                    .entity(main_camera)
+                    .insert(AtmosphereCamera::default());
+                // AtmosphereCamera::default();
+            }
+        },
+    );
+}
+
 impl PluginGroup for RobotSimPlugin {
     fn build(self) -> PluginGroupBuilder {
         let mut group = PluginGroupBuilder::start::<Self>();
@@ -29,6 +46,10 @@ impl PluginGroup for RobotSimPlugin {
             .add_group(SimPlugin)
             .add(test_scene::plugin)
             .add(sketching::plugin);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            group = group.add(AtmospherePlugin).add(insert_atmosphere_cam);
+        }
 
         // #[cfg(target_arch = "wasm32")]
         // let primary_window = Some(Window {
