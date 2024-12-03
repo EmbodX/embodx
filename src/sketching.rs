@@ -1,3 +1,4 @@
+use bevy::core_pipeline::bloom::{BloomCompositeMode, BloomPrefilterSettings};
 use bevy_2d_line::LineRenderingPlugin;
 
 // #[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
@@ -6,8 +7,10 @@ use bevy_2d_line::LineRenderingPlugin;
 //     Sketching,
 // }
 
-use crate::util::ray_intersection;
 use crate::util::traits::LinearParameterisedTrait;
+use dimensify::util::spatial::ray_intersection;
+
+use bevy::render::view::RenderLayers;
 
 #[derive(Debug)]
 struct Sketch {
@@ -15,6 +18,9 @@ struct Sketch {
 }
 
 const SHOW_DEBUG_RAYCAST: bool = false;
+
+const RENDER_LAYER_2D_BLOOM: usize = 1;
+const RENDER_LAYER_2D_NORMAL: usize = 2;
 
 #[derive(Component)]
 struct LineTargetTransition {
@@ -192,7 +198,7 @@ fn handle_screenshot_taken_event(
                 ..default()
             })
             .insert(Name::new("Screenshot mesh"))
-            .insert(dbg!(event.transform.compute_transform()))
+            .insert(event.transform.compute_transform())
             // .insert(NotShadowCaster)
             ;
 
@@ -432,6 +438,7 @@ fn mouse_click_event(
                     )),
                     ..default()
                 })
+                .insert(RenderLayers::layer(RENDER_LAYER_2D_BLOOM))
                 .insert(SketchingEndPoint);
         }
 
@@ -462,6 +469,7 @@ fn mouse_click_event(
                     )),
                     ..default()
                 })
+                .insert(RenderLayers::layer(RENDER_LAYER_2D_BLOOM))
                 .insert(SketchingEndPoint);
         }
     }
@@ -488,47 +496,104 @@ fn setup_2d_cam(
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    commands.spawn((
-        Camera2dBundle {
-            camera: Camera {
-                hdr: true, // 1. HDR is required for bloom
-                // name: Some("2d".to_string()),
-                order: 1,
-                // TODO look into https://github.com/bevyengine/bevy/pull/13419
-                // clear_color: ClearColorConfig::None,
-                ///////////
-                // NOTE:
-                // With ClearColorConfig::None the render target is not cleared, the only pixel that will be modified are the pixels that are effectively rendered.
-                // With ClearColorConfig::Custom(Color::NONE) the render target is first cleared with a transparent pixel color, then the rendered pixel are added.
-                // see https://github.com/bevyengine/bevy/issues/11844#issuecomment-1943534040
-                clear_color: ClearColorConfig::Custom(Color::NONE),
-                ///////////
-                output_mode: CameraOutputMode::Write {
-                    blend_state: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                    // blend_state: Some(BlendState{
+    commands
+        .spawn((
+            Camera2dBundle {
+                camera: Camera {
+                    hdr: true, // 1. HDR is required for bloom
+                    // name: Some("2d".to_string()),
+                    order: 2,
+                    // TODO look into https://github.com/bevyengine/bevy/pull/13419
+                    // clear_color: ClearColorConfig::None,
+                    ///////////
+                    // NOTE:
+                    // With ClearColorConfig::None the render target is not cleared, the only pixel that will be modified are the pixels that are effectively rendered.
+                    // With ClearColorConfig::Custom(Color::NONE) the render target is first cleared with a transparent pixel color, then the rendered pixel are added.
+                    // see https://github.com/bevyengine/bevy/issues/11844#issuecomment-1943534040
+                    clear_color: ClearColorConfig::Custom(Color::NONE),
+                    ///////////
+                    output_mode: CameraOutputMode::Write {
+                        blend_state: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                        // blend_state: Some(BlendState{
 
-                    //     color: BlendComponent::OVER,
-                    //     // color: BlendComponent {
-                    //     //     src_factor: BlendFactor::One,
-                    //     //     dst_factor: BlendFactor::One,
-                    //     //     operation: BlendOperation::Add,
-                    //     // },
-                    //     alpha: BlendComponent::OVER,
-                    // }),
-                    // blend_state: Some(BlendState::ALPHA_BLENDING),
-                    // blend_state: None,
-                    clear_color: ClearColorConfig::None,
-                    // color_attachment_load_op: LoadOp::Load,
-                    // clear_color: todo!(),
+                        //     color: BlendComponent::OVER,
+                        //     // color: BlendComponent {
+                        //     //     src_factor: BlendFactor::One,
+                        //     //     dst_factor: BlendFactor::One,
+                        //     //     operation: BlendOperation::Add,
+                        //     // },
+                        //     alpha: BlendComponent::OVER,
+                        // }),
+                        // blend_state: Some(BlendState::ALPHA_BLENDING),
+                        // blend_state: None,
+                        clear_color: ClearColorConfig::None,
+                        // color_attachment_load_op: LoadOp::Load,
+                        // clear_color: todo!(),
+                    },
+                    ..Default::default()
                 },
-                ..Default::default()
+                tonemapping: Tonemapping::TonyMcMapface, // 2. Using a tonemapper that desaturates to white is recommended
+                ..default()
             },
-            tonemapping: Tonemapping::TonyMcMapface, // 2. Using a tonemapper that desaturates to white is recommended
-            ..default()
-        },
-        BloomSettings::default(), // 3. Enable bloom for the camera
-        WindowOverlayCamera,
-    ));
+            // BloomSettings::default(), // 3. Enable bloom for the camera
+            BloomSettings {
+                intensity: 0.15,
+                low_frequency_boost: 0.7,
+                low_frequency_boost_curvature: 0.95,
+                high_pass_frequency: 1.0,
+                prefilter_settings: BloomPrefilterSettings {
+                    threshold: 0.0,
+                    threshold_softness: 0.0,
+                },
+                composite_mode: BloomCompositeMode::EnergyConserving,
+            },
+            WindowOverlayCamera,
+        ))
+        .insert(RenderLayers::layer(RENDER_LAYER_2D_BLOOM))
+        .insert(Name::new("Camera2dBloom"));
+    commands
+        .spawn((
+            Camera2dBundle {
+                camera: Camera {
+                    // hdr: true, // 1. HDR is required for bloom
+                    // name: Some("2d".to_string()),
+                    order: 1,
+                    // TODO look into https://github.com/bevyengine/bevy/pull/13419
+                    // clear_color: ClearColorConfig::None,
+                    ///////////
+                    // NOTE:
+                    // With ClearColorConfig::None the render target is not cleared, the only pixel that will be modified are the pixels that are effectively rendered.
+                    // With ClearColorConfig::Custom(Color::NONE) the render target is first cleared with a transparent pixel color, then the rendered pixel are added.
+                    // see https://github.com/bevyengine/bevy/issues/11844#issuecomment-1943534040
+                    clear_color: ClearColorConfig::Custom(Color::NONE),
+                    ///////////
+                    output_mode: CameraOutputMode::Write {
+                        blend_state: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                        // blend_state: Some(BlendState{
+
+                        //     color: BlendComponent::OVER,
+                        //     // color: BlendComponent {
+                        //     //     src_factor: BlendFactor::One,
+                        //     //     dst_factor: BlendFactor::One,
+                        //     //     operation: BlendOperation::Add,
+                        //     // },
+                        //     alpha: BlendComponent::OVER,
+                        // }),
+                        // blend_state: Some(BlendState::ALPHA_BLENDING),
+                        // blend_state: None,
+                        clear_color: ClearColorConfig::None,
+                        // color_attachment_load_op: LoadOp::Load,
+                        // clear_color: todo!(),
+                    },
+                    ..Default::default()
+                },
+                tonemapping: Tonemapping::TonyMcMapface, // 2. Using a tonemapper that desaturates to white is recommended
+                ..default()
+            },
+            // WindowOverlayCamera,
+        ))
+        // .insert(RenderLayers::layer(RENDER_LAYER_2D_NORMAL))
+        .insert(Name::new("Camera2d"));
     // commands.spawn(MaterialMesh2dBundle {
     //     mesh: meshes.add(Rectangle::default()).into(),
     //     transform: Transform::default().with_scale(Vec3::splat(128.)),
@@ -547,7 +612,7 @@ use bevy_polyline::{
     PolylinePlugin,
 };
 
-use crate::camera::main_camera::MainCamera;
+use dimensify::camera::main_camera::MainCamera;
 
 #[derive(Component)]
 struct WindowOverlayCamera;

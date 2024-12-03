@@ -13,7 +13,7 @@ use dimensify::SimPlugin;
 // pub mod robot;
 // pub mod robot_vis;
 // pub mod scene;
-// pub mod sketching;
+pub mod sketching;
 pub mod test_scene;
 // pub mod ui;
 pub mod util;
@@ -25,7 +25,10 @@ impl PluginGroup for RobotSimPlugin {
     fn build(self) -> PluginGroupBuilder {
         let mut group = PluginGroupBuilder::start::<Self>();
 
-        group = group.add_group(SimPlugin).add(test_scene::plugin);
+        group = group
+            .add_group(SimPlugin)
+            .add(test_scene::plugin)
+            .add(sketching::plugin);
 
         // #[cfg(target_arch = "wasm32")]
         // let primary_window = Some(Window {
