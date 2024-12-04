@@ -242,9 +242,8 @@ fn mouse_click_event(
 
     mut materials: ResMut<Assets<ColorMaterial>>,
 
-    mut alt_pressed: Local<bool>,
-
     mut keyboard_input_events: EventReader<KeyboardInput>,
+    keys: Res<ButtonInput<KeyCode>>,
 
     mut q_main_camera: Query<
         (&mut Camera, &mut PanOrbitCamera, &GlobalTransform),
@@ -261,6 +260,8 @@ fn mouse_click_event(
 
     mut polyline_materials: ResMut<Assets<PolylineMaterial>>,
     mut polylines: ResMut<Assets<Polyline>>,
+
+    active_sketching_line: Option<Res<ActiveSketchingLine>>,
 ) {
     // for mut cam in q_overlay_cam.iter_mut() {
     //     dbg!(&cam);
@@ -277,6 +278,9 @@ fn mouse_click_event(
 
     let (main_camera, mut panorb_cam, main_camera_transform) = q_main_camera.single_mut();
 
+    let alt_pressed = keys.pressed(KeyCode::AltLeft);
+    panorb_cam.enabled = !alt_pressed;
+
     for event in keyboard_input_events.read() {
         // if event.state != ButtonState::Pressed {
         //     continue;
@@ -285,30 +289,6 @@ fn mouse_click_event(
         info!("{:?}", event);
 
         match event.key_code {
-            KeyCode::AltLeft => {
-                match event.state {
-                    ButtonState::Pressed => {
-                        *alt_pressed = true;
-                        // FIXME use bevy state.
-                        panorb_cam.enabled = false;
-
-                        //         screenshot_manager
-                        //                     .take_screenshot(main_window.single(), |image| {
-
-                        // polyline_materials;
-
-                        //                         // dbg!(image);
-
-                        //                     });
-                        // .save_screenshot_to_disk(, path)
-                        // .unwrap();
-                    }
-                    ButtonState::Released => {
-                        *alt_pressed = false;
-                        panorb_cam.enabled = true;
-                    }
-                };
-            }
             KeyCode::Enter => {
                 if event.state != ButtonState::Pressed {
                     continue;
@@ -423,7 +403,7 @@ fn mouse_click_event(
 
     ////////////////
 
-    if *alt_pressed && buttons.just_pressed(MouseButton::Left) {
+    if alt_pressed && buttons.just_pressed(MouseButton::Left) {
         // Left button was pressed
 
         // // ensure that overlay overlay_camera has clearcolor set to none
@@ -463,7 +443,9 @@ fn mouse_click_event(
         // create the storage
         line_storage.lines.push(Sketch::new());
     }
-    if *alt_pressed && buttons.just_released(MouseButton::Left) {
+
+    // has an active sketching line but the left button is not pressed
+    if active_sketching_line.is_some() && !(alt_pressed && buttons.pressed(MouseButton::Left)) {
         // Left Button was released
         commands.remove_resource::<ActiveSketchingLine>();
 
