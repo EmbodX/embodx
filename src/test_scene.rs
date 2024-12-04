@@ -1,5 +1,6 @@
-use bevy::prelude::*;
-use dimensify::rigidbody::add_floor;
+use bevy::{prelude::*, render::camera::CameraUpdateSystem};
+use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraSystemSet};
+use dimensify::{camera::main_camera::MainCamera, rigidbody::add_floor};
 use rapier3d::{math::Vector, prelude::SharedShape};
 
 use std::f32::consts::*;
@@ -16,8 +17,41 @@ pub fn plugin(app: &mut App) {
         // .insert_resource(DirectionalLightShadowMap { size: 4096 })
         // .add_plugins(DefaultPlugins)
         .insert_resource(Pause(true))
-        .add_systems(Startup, (setup, add_floor))
-        .add_systems(Update, (animate_light_direction, switch_mode, spin));
+        .add_systems(
+            Startup,
+            (
+                setup,
+                // add_floor
+            ),
+        )
+        .add_systems(Update, (animate_light_direction, switch_mode, spin))
+        .add_systems(PostStartup, setup_camera_transform)
+        .add_systems(
+            Update,
+            limit_camera_transform
+                .after(PanOrbitCameraSystemSet)
+                .before(CameraUpdateSystem)
+                .before(TransformSystem::TransformPropagate),
+        );
+}
+
+pub fn limit_camera_transform(
+    mut q_main_camera: Query<&mut PanOrbitCamera, (With<MainCamera>, With<Camera>)>,
+) {
+    let mut cam = q_main_camera.single_mut();
+    cam.target_focus = cam
+        .target_focus
+        .clamp(Vec3::new(-7.0, -0.05, -15.0), Vec3::new(7.0, 0.05, 3.));
+}
+
+pub fn setup_camera_transform(
+    mut q_main_camera: Query<&mut PanOrbitCamera, (With<MainCamera>, With<Camera>)>,
+) {
+    let mut cam = q_main_camera.single_mut();
+
+    cam.pitch_lower_limit = Some(0.1);
+    cam.zoom_upper_limit = Some(13.0);
+    cam.zoom_lower_limit = 0.5;
 }
 
 fn setup(
@@ -38,7 +72,14 @@ fn setup(
             ..default()
         }
         .into(),
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, 0.0, -FRAC_PI_4)),
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, PI, -FRAC_PI_4)),
+        // transform: Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, 0.0, -FRAC_PI_4)),
+        ..default()
+    });
+
+    commands.spawn(SceneBundle {
+        scene: asset_server.load(GltfAssetLabel::Scene(0).from_asset("room_scene.glb")),
+        transform: Transform::from_xyz(0., 0., 1.),
         ..default()
     });
 
