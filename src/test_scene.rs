@@ -78,7 +78,7 @@ fn setup(
     });
 
     commands.spawn(SceneBundle {
-        scene: asset_server.load(GltfAssetLabel::Scene(0).from_asset("room_scene.glb")),
+        scene: asset_server.load(GltfAssetLabel::Scene(0).from_asset("scene/room_scene.glb")),
         transform: Transform::from_xyz(0., 0., 1.),
         ..default()
     });
