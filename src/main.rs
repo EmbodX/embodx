@@ -1,4 +1,4 @@
-use bevy::{log::LogPlugin, prelude::*};
+use bevy::{asset::AssetMetaCheck, log::LogPlugin, prelude::*};
 use dimensify::WebAssetPlugin;
 use embodx::RobotSimPlugin;
 use eyre::Result;
@@ -35,7 +35,7 @@ fn main() -> Result<()> {
         resizable: true,
         // cursor_visible: true,
         // present_mode: PresentMode::AutoVsync,
-        // This will spawn an invisible window
+        // This will spawn an invisible
         fit_canvas_to_parent: true, // no more need to handle this myself with wasm binding: https://github.com/bevyengine/bevy/commit/fed93a0edce9d66586dc70c1207a2092694b9a7d
 
         title: "EmbodX".to_string(),
@@ -46,18 +46,26 @@ fn main() -> Result<()> {
     let mut app = App::new();
     app.add_plugins(WebAssetPlugin {
         cache_resource: true,
-    })
-    .add_plugins(
-        DefaultPlugins
-            .set(WindowPlugin {
-                primary_window,
-                ..default()
-            })
-            .set(LogPlugin {
-                filter: "error,bevy_render=info,bevy_ecs=trace,bevy=info,k=error".to_string(),
-                ..default()
-            }),
-    )
+    });
+
+    let mut default_plugin = DefaultPlugins.set(WindowPlugin {
+        primary_window,
+        ..default()
+    });
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        // the meta check most of the time doesn't work on webserver
+        default_plugin = default_plugin.set(AssetPlugin {
+            meta_check: AssetMetaCheck::Never,
+            ..default()
+        });
+    }
+
+    app.add_plugins(default_plugin.set(LogPlugin {
+        filter: "error,bevy_render=info,bevy_ecs=trace,bevy=info,k=error".to_string(),
+        ..default()
+    }))
     .add_plugins(RobotSimPlugin)
     .add_plugins(dimensify::ui::editor_pls_plugins)
     .run();

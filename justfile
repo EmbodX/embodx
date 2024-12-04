@@ -75,10 +75,10 @@ forward: ## ▶️  Forwards port 3000 to ngrok (to access from mobile on a secu
 # WebAssembly Build
 wasm-build: ## ⚙️  Build wasm version
     cargo build --release --target wasm32-unknown-unknown
-    wasm-bindgen --out-dir ./www/public/out --target web ./target/wasm32-unknown-unknown/release/dimensify.wasm
+    wasm-bindgen --out-dir ./www/public/out --target web ./target/wasm32-unknown-unknown/release/embodx.wasm
 
 wasm-opt: ## 🔩 Optimize wasm file size
-    wasm-opt -Os -o ./www/public/out/dimensify.wasm ./www/public/out/dimensify.wasm
+    wasm-opt -Os -o ./www/public/out/embodx.wasm ./www/public/out/embodx.wasm
 
 wasm-build-opt: ## ⚙️  Build wasm version with optimized file size
     just wasm-build

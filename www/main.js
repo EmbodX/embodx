@@ -1,7 +1,7 @@
 import './style.css'
 import './network.css'
 
-import init from './public/out/bevy-rust-wasm-experiments'
+import init from './public/out/embodx'
 import './components/qrcode-display'
 import './components/footer-display'
 
