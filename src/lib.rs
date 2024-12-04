@@ -1,5 +1,11 @@
-use bevy::{app::PluginGroupBuilder, log::LogPlugin, prelude::*, transform::commands};
-use bevy_atmosphere::plugin::{AtmosphereCamera, AtmospherePlugin};
+use bevy::{
+    app::PluginGroupBuilder,
+    asset::LoadState,
+    log::LogPlugin,
+    prelude::*,
+    render::render_resource::{TextureViewDescriptor, TextureViewDimension},
+    transform::commands,
+};
 // use bevy_egui::EguiPlugin;
 // use bevy_web_asset::WebAssetPlugin;
 use rapier3d::parry::simba::scalar::SupersetOf;
@@ -23,7 +29,9 @@ pub mod util;
 pub struct RobotSimPlugin;
 
 #[cfg(not(target_arch = "wasm32"))]
-fn insert_atmosphere_cam(app: &mut App) {
+fn insert_skybox(app: &mut App) {
+    use bevy_atmosphere::plugin::AtmosphereCamera;
+
     app.add_systems(
         PostStartup,
         |mut commands: Commands,
@@ -38,6 +46,71 @@ fn insert_atmosphere_cam(app: &mut App) {
     );
 }
 
+#[cfg(target_arch = "wasm32")]
+fn insert_skybox(app: &mut App) {
+    use bevy::core_pipeline::Skybox;
+
+    /// Resource to track the loading state of the cubemap texture
+    /// and to reinterpret it as a cubemap texture.
+    #[derive(Resource)]
+    struct PendingCubemapReinterpret {
+        image_handle: Handle<Image>,
+    }
+
+    fn setup(
+        mut commands: Commands,
+        asset_server: Res<AssetServer>,
+        q_main_camera: Query<Entity, With<MainCamera>>,
+    ) {
+        let skybox_handle = asset_server.load("texture/skybox_cubemap.jpg");
+
+        for main_camera in q_main_camera.iter() {
+            commands.entity(main_camera).insert(Skybox {
+                image: skybox_handle.clone(),
+                brightness: 1000.0,
+            });
+        }
+
+        commands.insert_resource(PendingCubemapReinterpret {
+            image_handle: skybox_handle,
+        });
+    }
+
+    fn reinterpret_image(
+        asset_server: Res<AssetServer>,
+        mut commands: Commands,
+        mut images: ResMut<Assets<Image>>,
+        cubemap: ResMut<PendingCubemapReinterpret>,
+        mut skyboxes: Query<&mut Skybox>,
+    ) {
+        if asset_server.load_state(&cubemap.image_handle) == LoadState::Loaded {
+            let image = images.get_mut(&cubemap.image_handle).unwrap();
+            // NOTE: PNGs do not have any metadata that could indicate they contain a cubemap texture,
+            // so they appear as one texture. The following code reconfigures the texture as necessary.
+            if image.texture_descriptor.array_layer_count() == 1 {
+                image.reinterpret_stacked_2d_as_array(image.height() / image.width());
+                image.texture_view_descriptor = Some(TextureViewDescriptor {
+                    dimension: Some(TextureViewDimension::Cube),
+                    ..default()
+                });
+            }
+
+            for mut skybox in &mut skyboxes {
+                skybox.image = cubemap.image_handle.clone();
+            }
+
+            commands.remove_resource::<PendingCubemapReinterpret>();
+        }
+    }
+
+    // begin loading
+    app.add_systems(PostStartup, setup);
+    app.add_systems(
+        Update,
+        reinterpret_image.run_if(resource_exists::<PendingCubemapReinterpret>),
+    );
+}
+
 impl PluginGroup for RobotSimPlugin {
     fn build(self) -> PluginGroupBuilder {
         let mut group = PluginGroupBuilder::start::<Self>();
@@ -48,8 +121,11 @@ impl PluginGroup for RobotSimPlugin {
             .add(sketching::plugin);
         #[cfg(not(target_arch = "wasm32"))]
         {
-            group = group.add(AtmospherePlugin).add(insert_atmosphere_cam);
+            use bevy_atmosphere::plugin::AtmospherePlugin;
+
+            group = group.add(AtmospherePlugin);
         }
+        group = group.add(insert_skybox);
 
         // #[cfg(target_arch = "wasm32")]
         // let primary_window = Some(Window {
