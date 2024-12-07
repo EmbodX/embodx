@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>embodx</title>
+    <link rel="prefetch" href="/out/embodx_bg.wasm" />
+    <link rel="prefetch" href="/assets/ball-steel-no-shadow.png" />
+    <link rel="prefetch" href="/assets/impactMetal_heavy_004.ogg" />
+    <link rel="prefetch" href="/assets/impactPlate_medium_000.ogg" />
+    <link rel="prefetch" href="/assets/m6x11.ttf" />
+    <link rel="prefetch" href="/assets/ThaleahFat.ttf" />
+    <link rel="canonical" href="http://localhost:3000"/>
+    <meta name="twitter:image" content="http://localhost:3000/embodx-logo-1280x640.png"/>
+    <meta name="twitter:image:src" content="http://localhost:3000/embodx-logo-1280x640.png"/>
+    <meta name="twitter:site" content="@soraxas"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="embodx"/>
+    <meta name="twitter:description" content="A cutting-edge robotics project focused on embodied AI, combining real-to-sim technology for enhanced simulation and real-world integration."/>
+    <meta name="twitter:creator" content="@soraxas"/>
+    <meta name="twitter:url" content="http://localhost:3000"/>
+    <meta property="og:image" content="http://localhost:3000/embodx-logo-1280x640.png"/>
+    <meta property="og:image:alt" content="A cutting-edge robotics project focused on embodied AI, combining real-to-sim technology for enhanced simulation and real-world integration."/>
+    <meta property="og:site_name" content="embodx"/>
+    <meta property="og:type" content="website"/>
+    <meta property="og:title" content="embodx"/>
+    <meta property="og:url" content="http://localhost:3000"/>
+    <meta property="og:description" content="A cutting-edge robotics project focused on embodied AI, combining real-to-sim technology for enhanced simulation and real-world integration."/>
+    <meta name="description" content="A cutting-edge robotics project focused on embodied AI, combining real-to-sim technology for enhanced simulation and real-world integration."/>
+    <meta name="keywords" content="Rust, WebAssembly, Bevy, Wasm"/>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+    <script type="module" crossorigin src="/assets/index.ae0ee7ca.js"></script>
+    <link rel="stylesheet" href="/assets/index.009b9755.css">
+  </head>
+  <body>
+    <button class="back-home-page" title="Back to home page">👋</button>
+    <canvas id="bevy"></canvas>
+    <div class="text-center loader-wrapper">
+      <p>Loading ...</p>
+      <p><span class="loader"></span></p>
+    </div>
+    <div id="orientationlock">Please lock your device in portrait mode to use this game.</div>
+    <div id="presentation">
+        <header>
+          <ul class="site-networks">
+            <li class="github">
+              <a
+                href="https://github.com/soraxas"
+                title="Soraxas on github"
+              >
+                <span class="icon"></span>
+                <span class="desc">Github</span>
+              </a>
+            </li>
+          </ul>
+          <h1 class="title">embodx</h1>
+        </header>
+        <p class="logo-wrapper"><img src="./embodx-logo-445x380.png" /></p>
+        <p class="text-center"><button id="start">Start</button></p>
+        <p class="text-center">or snap the Qrcode below to view with your mobile device 👇</p>
+        <p class="text-center"><qrcode-display width="160" height="160"></qrcode-display></p>
+        <footer-display from="2024"></footer-display>
+    </div>
+    <script>
+// Insert hack to make sound autoplay on Chrome as soon as the user interacts with the tab:
+// https://developers.google.com/web/updates/2018/11/web-audio-autoplay#moving-forward
+
+// the following function keeps track of all AudioContexts and resumes them on the first user
+// interaction with the page. If the function is called and all contexts are already running,
+// it will remove itself from all event listeners.
+(function () {
+    // An array of all contexts to resume on the page
+    const audioContextList = [];
+
+    // An array of various user interaction events we should listen for
+    const userInputEventNames = [
+        "click",
+        "contextmenu",
+        "auxclick",
+        "dblclick",
+        "mousedown",
+        "mouseup",
+        "pointerup",
+        "touchend",
+        "keydown",
+        "keyup",
+    ];
+
+    // A proxy object to intercept AudioContexts and
+    // add them to the array for tracking and resuming later
+    self.AudioContext = new Proxy(self.AudioContext, {
+        construct(target, args) {
+            const result = new target(...args);
+            audioContextList.push(result);
+            return result;
+        },
+    });
+
+    // To resume all AudioContexts being tracked
+    function resumeAllContexts(_event) {
+        let count = 0;
+
+        audioContextList.forEach((context) => {
+            if (context.state !== "running") {
+                context.resume();
+            } else {
+                count++;
+            }
+        });
+
+        // If all the AudioContexts have now resumed then we unbind all
+        // the event listeners from the page to prevent unnecessary resume attempts
+        // Checking count > 0 ensures that the user interaction happens AFTER the game started up
+        if (count > 0 && count === audioContextList.length) {
+            userInputEventNames.forEach((eventName) => {
+                document.removeEventListener(eventName, resumeAllContexts);
+            });
+        }
+    }
+
+    // We bind the resume function for each user interaction
+    // event on the page
+    userInputEventNames.forEach((eventName) => {
+        document.addEventListener(eventName, resumeAllContexts);
+    });
+})();
+    </script>
+    <script src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script>
+    
+    
+  </body>
+</html>
