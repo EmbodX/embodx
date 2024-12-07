@@ -6,9 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "gh-pages -d dist --cname embodx-dev.tinyiu.com"
   },
   "devDependencies": {
     "vite": "^3.2.3"
+  },
+  "dependencies": {
+    "gh-pages": "^6.2.0"
   }
 }

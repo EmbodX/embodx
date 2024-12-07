@@ -1,5 +1,5 @@
 /**
- * Inspired by https://github.com/topheman/npm-registry-browser/blob/master/src/components/TwitterButton.js
+ * Inspired by https://github.com/soraxas/npm-registry-browser/blob/master/src/components/TwitterButton.js
  */
 
 const defaultAttributes = {

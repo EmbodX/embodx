@@ -1,1 +1,1 @@
-Those web-components are inspired by my previous project [topheman/webrtc-remote-control](https://github.com/topheman/webrtc-remote-control/tree/master/demo/shared/js/components).
+Those web-components are inspired by my previous project [soraxas/webrtc-remote-control](https://github.com/soraxas/webrtc-remote-control/tree/master/demo/shared/js/components).
