@@ -67,7 +67,7 @@ fn main() -> Result<()> {
         ..default()
     }))
     .add_plugins(RobotSimPlugin)
-    .add_plugins(dimensify::ui::editor_pls_plugins)
+    // .add_plugins(dimensify::ui::editor_pls_plugins)
     .run();
 
     Ok(())

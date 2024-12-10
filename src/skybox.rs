@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-
+use dimensify::camera::main_camera::MainCamera;
 
 pub fn plugin(app: &mut App) {
     #[cfg(not(target_arch = "wasm32"))]
@@ -11,12 +11,9 @@ pub fn plugin(app: &mut App) {
     app.add_plugins(insert_skybox);
 }
 
-
-
 #[cfg(not(target_arch = "wasm32"))]
 fn insert_skybox(app: &mut App) {
     use bevy_atmosphere::plugin::AtmosphereCamera;
-    use dimensify::camera::main_camera::MainCamera;
 
     app.add_systems(
         PostStartup,
@@ -35,6 +32,11 @@ fn insert_skybox(app: &mut App) {
 #[cfg(target_arch = "wasm32")]
 fn insert_skybox(app: &mut App) {
     use bevy::core_pipeline::Skybox;
+    use bevy::{
+        asset::LoadState,
+        prelude::*,
+        render::render_resource::{TextureViewDescriptor, TextureViewDimension},
+    };
 
     /*
         creating a bevy compatible skybox from a panorama image and not an existing horizontal cross skybox image.

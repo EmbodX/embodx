@@ -1,13 +1,17 @@
 use bevy::{prelude::*, render::camera::CameraUpdateSystem};
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraSystemSet};
-use dimensify::{camera::main_camera::MainCamera, rigidbody::add_floor};
+use dimensify::{
+    camera::main_camera::MainCamera,
+    rigidbody::add_floor,
+    robot_vis::visuals::{UrdfLoadRequest, UrdfLoadRequestParams},
+};
 use rapier3d::{math::Vector, prelude::SharedShape};
 
 use std::f32::consts::*;
 
 use bevy::{
     core_pipeline::prepass::{DeferredPrepass, DepthPrepass, MotionVectorPrepass, NormalPrepass},
-    pbr::{CascadeShadowConfigBuilder, DefaultOpaqueRendererMethod, OpaqueRendererMethod},
+    pbr::{CascadeShadowConfigBuilder, DefaultOpaqueRendererMethod},
 };
 
 pub fn plugin(app: &mut App) {
@@ -24,6 +28,23 @@ pub fn plugin(app: &mut App) {
                 // add_floor
             ),
         )
+        .add_systems(Startup, |mut writer: EventWriter<UrdfLoadRequest>| {
+            writer.send(UrdfLoadRequest::new(
+                "https://cdn.jsdelivr.net/gh/Daniella1/urdf_files_dataset@81f4cdac42c3a51ba88833180db5bf3697988c87/urdf_files/random/robot-assets/franka_panda/panda.urdf"
+                    .to_string(),
+                Some(
+                    UrdfLoadRequestParams::default()
+                        .fixed_base()
+                        .with_collision_links(vec![
+                            ("panda_hand".to_string(), "panda_link7".to_string()),
+                            (
+                                "panda_leftfinger".to_string(),
+                                "panda_rightfinger".to_string(),
+                            ),
+                        ]),
+                ),
+            ));
+        })
         .add_systems(Update, (animate_light_direction, switch_mode, spin))
         .add_systems(PostStartup, setup_camera_transform)
         .add_systems(
@@ -275,42 +296,42 @@ fn switch_mode(
         pause.0 = !pause.0;
     }
 
-    if keys.just_pressed(KeyCode::Digit1) {
-        *mode = DefaultRenderMode::Deferred;
-        default_opaque_renderer_method.set_to_deferred();
-        println!("DefaultOpaqueRendererMethod: Deferred");
-        for _ in materials.iter_mut() {}
-        for camera in &cameras {
-            commands.entity(camera).remove::<NormalPrepass>();
-            commands.entity(camera).insert(DepthPrepass);
-            commands.entity(camera).insert(MotionVectorPrepass);
-            commands.entity(camera).insert(DeferredPrepass);
-        }
-    }
-    if keys.just_pressed(KeyCode::Digit2) {
-        *mode = DefaultRenderMode::Forward;
-        default_opaque_renderer_method.set_to_forward();
-        println!("DefaultOpaqueRendererMethod: Forward");
-        for _ in materials.iter_mut() {}
-        for camera in &cameras {
-            commands.entity(camera).remove::<NormalPrepass>();
-            commands.entity(camera).remove::<DepthPrepass>();
-            commands.entity(camera).remove::<MotionVectorPrepass>();
-            commands.entity(camera).remove::<DeferredPrepass>();
-        }
-    }
-    if keys.just_pressed(KeyCode::Digit3) {
-        *mode = DefaultRenderMode::ForwardPrepass;
-        default_opaque_renderer_method.set_to_forward();
-        println!("DefaultOpaqueRendererMethod: Forward + Prepass");
-        for _ in materials.iter_mut() {}
-        for camera in &cameras {
-            commands.entity(camera).insert(NormalPrepass);
-            commands.entity(camera).insert(DepthPrepass);
-            commands.entity(camera).insert(MotionVectorPrepass);
-            commands.entity(camera).remove::<DeferredPrepass>();
-        }
-    }
+    // if keys.just_pressed(KeyCode::Digit1) {
+    //     *mode = DefaultRenderMode::Deferred;
+    //     default_opaque_renderer_method.set_to_deferred();
+    //     println!("DefaultOpaqueRendererMethod: Deferred");
+    //     for _ in materials.iter_mut() {}
+    //     for camera in &cameras {
+    //         commands.entity(camera).remove::<NormalPrepass>();
+    //         commands.entity(camera).insert(DepthPrepass);
+    //         commands.entity(camera).insert(MotionVectorPrepass);
+    //         commands.entity(camera).insert(DeferredPrepass);
+    //     }
+    // }
+    // if keys.just_pressed(KeyCode::Digit2) {
+    //     *mode = DefaultRenderMode::Forward;
+    //     default_opaque_renderer_method.set_to_forward();
+    //     println!("DefaultOpaqueRendererMethod: Forward");
+    //     for _ in materials.iter_mut() {}
+    //     for camera in &cameras {
+    //         commands.entity(camera).remove::<NormalPrepass>();
+    //         commands.entity(camera).remove::<DepthPrepass>();
+    //         commands.entity(camera).remove::<MotionVectorPrepass>();
+    //         commands.entity(camera).remove::<DeferredPrepass>();
+    //     }
+    // }
+    // if keys.just_pressed(KeyCode::Digit3) {
+    //     *mode = DefaultRenderMode::ForwardPrepass;
+    //     default_opaque_renderer_method.set_to_forward();
+    //     println!("DefaultOpaqueRendererMethod: Forward + Prepass");
+    //     for _ in materials.iter_mut() {}
+    //     for camera in &cameras {
+    //         commands.entity(camera).insert(NormalPrepass);
+    //         commands.entity(camera).insert(DepthPrepass);
+    //         commands.entity(camera).insert(MotionVectorPrepass);
+    //         commands.entity(camera).remove::<DeferredPrepass>();
+    //     }
+    // }
 
     if keys.just_pressed(KeyCode::KeyH) {
         *hide_ui = !*hide_ui;
@@ -319,31 +340,14 @@ fn switch_mode(
     if !*hide_ui {
         text.push_str("(H) Hide UI\n");
         text.push_str("(Space) Play/Pause\n\n");
-        text.push_str("Rendering Method:\n");
 
-        text.push_str(&format!(
-            "(1) {} Deferred\n",
-            if let DefaultRenderMode::Deferred = *mode {
-                ">"
-            } else {
-                ""
-            }
-        ));
-        text.push_str(&format!(
-            "(2) {} Forward\n",
-            if let DefaultRenderMode::Forward = *mode {
-                ">"
-            } else {
-                ""
-            }
-        ));
-        text.push_str(&format!(
-            "(3) {} Forward + Prepass\n",
-            if let DefaultRenderMode::ForwardPrepass = *mode {
-                ">"
-            } else {
-                ""
-            }
-        ));
+        text.push_str("Diagrammatic Teaching:\n");
+
+        text.push_str(
+            "1. Hold (Alt) and draw (with Left Click) from the robot hand to your location\n",
+        );
+        text.push_str("2. Press (Enter) to confirm with snapshot\n");
+        text.push_str("3. Rotate to a different angle and draw to connect the two points again\n");
+        text.push_str("4. Press (Backspace) to generate\n");
     }
 }
