@@ -41,7 +41,8 @@ fn spawn_bloom_sketch_endpoint(
             ..default()
         })
         .insert(RenderLayers::layer(RENDER_LAYER_2D_BLOOM))
-        .insert(SketchingEndPoint);
+        .insert(SketchingEndPoint)
+        .insert(OnScreenSketching);
 }
 
 #[derive(Component)]
@@ -125,6 +126,9 @@ struct ScreenshotTaken {
 
 #[derive(Component)]
 struct SketchingEndPoint;
+
+#[derive(Component)]
+struct OnScreenSketching;
 
 pub fn plugin(app: &mut App) {
     app.add_plugins(LineRenderingPlugin)
@@ -251,17 +255,18 @@ fn mouse_click_event(
     >,
 
     // query to get the window (so we can read the current cursor position)
-    q_window: Query<&Window, With<PrimaryWindow>>,
+    q_window: Query<(Entity, &Window), With<PrimaryWindow>>,
     // query to get camera transform
     mut q_overlay_cam: Query<(&mut Camera, &GlobalTransform), With<WindowOverlayCamera>>,
 
     mut screenshot_manager: ResMut<ScreenshotManager>,
-    main_window: Query<Entity, With<PrimaryWindow>>,
 
     mut polyline_materials: ResMut<Assets<PolylineMaterial>>,
     mut polylines: ResMut<Assets<Polyline>>,
 
     active_sketching_line: Option<Res<ActiveSketchingLine>>,
+
+    q_sktech: Query<Entity, With<OnScreenSketching>>,
 ) {
     // for mut cam in q_overlay_cam.iter_mut() {
     //     dbg!(&cam);
@@ -271,6 +276,8 @@ fn mouse_click_event(
     // if let Some(cursor_ray) = **cursor_ray {
     //     raycast.debug_cast_ray(cursor_ray, &default(), &mut gizmos);
     // }
+
+    let (main_window_entity, window) = q_window.single();
 
     // get the camera info and transform
     // assuming there is exactly one main camera entity, so Query::single() is OK
@@ -305,7 +312,7 @@ fn mouse_click_event(
                     transform.translation += main_camera_transform.forward() * 0.5;
 
                     screenshot_manager
-                        .take_screenshot(main_window.single(), move |image| {
+                        .take_screenshot(main_window_entity, move |image| {
                             screenshot_event_sender.send(ScreenshotTaken {
                                 transform,
                                 img: image,
@@ -317,24 +324,29 @@ fn mouse_click_event(
 
                     if SHOW_DEBUG_RAYCAST {
                         for ray in line.vertices.iter() {
-                            commands.spawn(PolylineBundle {
-                                polyline: polylines.add(Polyline {
-                                    // FIXME no clone, just pop it
-                                    vertices: vec![ray.origin, ray.origin + ray.direction * 500.1],
-                                    // vertices: vec![-Vec3::ONE, Vec3::ONE],
+                            commands
+                                .spawn(PolylineBundle {
+                                    polyline: polylines.add(Polyline {
+                                        // FIXME no clone, just pop it
+                                        vertices: vec![
+                                            ray.origin,
+                                            ray.origin + ray.direction * 500.1,
+                                        ],
+                                        // vertices: vec![-Vec3::ONE, Vec3::ONE],
 
-                                    // vertices: Vec::with_capacity(31),
-                                }),
-                                material: polyline_materials.add(PolylineMaterial {
-                                    width: 10.,
-                                    // color: Color::srgb(0.8, 0.2, 0.3).to_linear(),
-                                    color: Color::hsl(0.5, 0.2, 0.3).to_linear(),
+                                        // vertices: Vec::with_capacity(31),
+                                    }),
+                                    material: polyline_materials.add(PolylineMaterial {
+                                        width: 10.,
+                                        // color: Color::srgb(0.8, 0.2, 0.3).to_linear(),
+                                        color: Color::hsl(0.5, 0.2, 0.3).to_linear(),
 
-                                    perspective: true,
+                                        perspective: true,
+                                        ..Default::default()
+                                    }),
                                     ..Default::default()
-                                }),
-                                ..Default::default()
-                            });
+                                })
+                                .insert(OnScreenSketching);
                         }
                     }
 
@@ -409,19 +421,28 @@ fn mouse_click_event(
         // // ensure that overlay overlay_camera has clearcolor set to none
         // overlay_camera.clear_color = ClearColorConfig::None;
 
+        //////////////////////////
+        // remove all existing on-screen sketching lines
+        for entity in q_sktech.iter() {
+            commands.entity(entity).despawn_recursive();
+        }
+        // remove the active sketching line as well
+        line_storage.lines.clear();
+        //////////////////////////
+
         let entity = commands
             .spawn(Line {
                 points: Vec::new(),
                 colors: Vec::new(),
                 thickness: 9.0,
             })
+            .insert(OnScreenSketching)
             .id();
         commands.insert_resource::<ActiveSketchingLine>(ActiveSketchingLine {
             line2d_entity: entity,
         });
 
         // There is only one primary window, so we can similarly get it from the query:
-        let window = q_window.single();
 
         // check if the cursor is inside the window and get its position
         // then, ask bevy to convert into world coordinates, and truncate to discard Z
@@ -448,8 +469,6 @@ fn mouse_click_event(
     if active_sketching_line.is_some() && !(alt_pressed && buttons.pressed(MouseButton::Left)) {
         // Left Button was released
         commands.remove_resource::<ActiveSketchingLine>();
-
-        let window = q_window.single();
 
         if let Some(world_position) = window
             .cursor_position()
