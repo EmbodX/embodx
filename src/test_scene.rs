@@ -354,5 +354,6 @@ fn switch_mode(
         text.push_str("2. Press (Enter) to confirm with snapshot\n");
         text.push_str("3. Rotate to a different angle and draw to connect the two points again\n");
         text.push_str("4. Press (Backspace) to generate\n");
+        text.push_str("5. Press (G) to execute trajectory\n");
     }
 }
