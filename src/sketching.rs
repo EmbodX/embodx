@@ -1,5 +1,7 @@
 use bevy::core_pipeline::bloom::{BloomCompositeMode, BloomPrefilterSettings};
+use bevy::transform;
 use bevy_2d_line::LineRenderingPlugin;
+use dimensify::robot_vis::EndEffectorTarget;
 
 // #[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
 // enum SketchState {
@@ -138,6 +140,8 @@ pub fn plugin(app: &mut App) {
             Update,
             my_cursor_system.run_if(resource_exists::<ActiveSketchingLine>),
         )
+        .add_systems(Update, handle_move_endeffector)
+        .add_systems(Update, handle_timed_movement)
         .add_systems(Update, mouse_click_event)
         .add_systems(Update, line_transition_to_target)
         //    .add_plugins(CursorRayPlugin)
@@ -193,6 +197,28 @@ use bevy::render::view::screenshot::ScreenshotManager;
 
 // ScreenshotReceiver
 
+fn handle_timed_movement(
+    mut commands: Commands,
+    mut q_entity: Query<(&mut Transform, &mut TimedMovement, Entity)>,
+    time: Res<Time>,
+) {
+    for (mut transform, mut timed_movement, entity) in q_entity.iter_mut() {
+        let current_idx = (timed_movement.current_time / timed_movement.time_step) as usize;
+
+        if current_idx >= timed_movement.translations.len() {
+            if timed_movement.despawn_after {
+                commands.entity(entity).despawn_recursive();
+            } else {
+                commands.entity(entity).remove::<TimedMovement>();
+            }
+            // transform.translation = transform.translation[0];
+        } else {
+            transform.translation = timed_movement.translations[current_idx];
+            timed_movement.current_time += time.delta_seconds();
+        }
+    }
+}
+
 /// when receiving a screenshot event, spawn a new entity with the screenshot as a texture
 fn handle_screenshot_taken_event(
     mut screenshot_receiver: EventReader<ScreenshotTaken>,
@@ -232,6 +258,51 @@ fn handle_screenshot_taken_event(
         // clear the on-screen sketch by despawning them
         for entity in sketch_line_parts.iter() {
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct TimedMovement {
+    pub translations: Vec<Vec3>,
+    pub time_step: f32,
+    pub despawn_after: bool,
+    current_time: f32,
+}
+
+fn handle_move_endeffector(
+    mut commands: Commands,
+    mut line_storage: Query<&LineTargetTransition>,
+    mut keyboard_input_events: EventReader<KeyboardInput>,
+    // q_end_effector_target: Query<Entity, With<EndEffectorTarget>>,
+) {
+    for event in keyboard_input_events.read() {
+        // if event.state != ButtonState::Pressed {
+        //     continue;
+        // }
+
+        info!("{:?}", event);
+        // FIXME should end effector target be a singleton, resource?
+        // right now it can have multiple instances
+
+        if event.key_code == KeyCode::KeyG && event.state == ButtonState::Pressed {
+            if let Some(line) = line_storage.iter().last() {
+                let target_line: Vec<_> =
+                    line.target_line_pos.iter().map(|ray| ray.clone()).collect();
+
+                commands
+                    .spawn(EndEffectorTarget)
+                    // .entity(q_end_effector_target.single())
+                    .insert(TimedMovement {
+                        translations: target_line,
+                        time_step: 0.1,
+                        current_time: 0.,
+                        despawn_after: true,
+                    })
+                    .insert(TransformBundle::default());
+            }
+
+            // target_line
         }
     }
 }
@@ -427,7 +498,7 @@ fn mouse_click_event(
             commands.entity(entity).despawn_recursive();
         }
         // remove the active sketching line as well
-        line_storage.lines.clear();
+        // line_storage.lines.clear();
         //////////////////////////
 
         let entity = commands
