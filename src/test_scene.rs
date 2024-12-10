@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::camera::CameraUpdateSystem};
+use bevy::{pbr::DirectionalLightShadowMap, prelude::*, render::camera::CameraUpdateSystem};
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraSystemSet};
 use dimensify::{
     camera::main_camera::MainCamera,
@@ -88,8 +88,12 @@ fn setup(
             ..default()
         },
         cascade_shadow_config: CascadeShadowConfigBuilder {
-            num_cascades: 3,
-            maximum_distance: 10.0,
+            // wgl2 only support 1 cascade
+            num_cascades: 1,
+            maximum_distance: 20.,
+            overlap_proportion: 0.4,
+            first_cascade_far_bound: 25.,
+            // first_cascade_far_bound: 1.,r
             ..default()
         }
         .into(),
@@ -97,6 +101,7 @@ fn setup(
         // transform: Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, 0.0, -FRAC_PI_4)),
         ..default()
     });
+    commands.insert_resource(DirectionalLightShadowMap { size: 8192 });
 
     commands.spawn(SceneBundle {
         scene: asset_server.load(GltfAssetLabel::Scene(0).from_asset("scene/room_scene.glb")),
