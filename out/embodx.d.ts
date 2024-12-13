@@ -1,36 +1,42 @@
 /* tslint:disable */
 /* eslint-disable */
+export function send_device_state_to_bevy(x: number, y: number, z: number, qx: number, qy: number, qz: number, qw: number): void;
+export function send_device_control_toggle_to_bevy(control_position: boolean, control_orientation: boolean): void;
+export function inject_js(): void;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
+  readonly send_device_state_to_bevy: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+  readonly send_device_control_toggle_to_bevy: (a: number, b: number) => void;
+  readonly inject_js: () => void;
   readonly main: (a: number, b: number) => number;
-  readonly wgpu_render_bundle_set_pipeline: (a: number, b: number) => void;
-  readonly wgpu_render_bundle_set_bind_group: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly wgpu_render_bundle_set_pipeline: (a: number, b: bigint) => void;
+  readonly wgpu_render_bundle_set_bind_group: (a: number, b: number, c: bigint, d: number, e: number) => void;
   readonly wgpu_render_bundle_set_push_constants: (a: number, b: number, c: number, d: number, e: number) => void;
-  readonly wgpu_render_bundle_draw_indirect: (a: number, b: number, c: number) => void;
-  readonly wgpu_render_bundle_draw_indexed_indirect: (a: number, b: number, c: number) => void;
-  readonly wgpu_render_bundle_set_vertex_buffer: (a: number, b: number, c: number, d: number, e: number) => void;
-  readonly wgpu_render_bundle_set_index_buffer: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly wgpu_render_bundle_draw_indirect: (a: number, b: bigint, c: bigint) => void;
+  readonly wgpu_render_bundle_draw_indexed_indirect: (a: number, b: bigint, c: bigint) => void;
+  readonly wgpu_render_bundle_set_vertex_buffer: (a: number, b: number, c: bigint, d: bigint, e: bigint) => void;
+  readonly wgpu_render_bundle_set_index_buffer: (a: number, b: bigint, c: number, d: bigint, e: bigint) => void;
   readonly wgpu_render_bundle_draw: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly wgpu_render_bundle_draw_indexed: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly wgpu_render_bundle_pop_debug_group: (a: number) => void;
   readonly wgpu_render_bundle_insert_debug_marker: (a: number, b: number) => void;
   readonly wgpu_render_bundle_push_debug_group: (a: number, b: number) => void;
+  readonly __externref_table_alloc: () => number;
+  readonly __wbindgen_export_1: WebAssembly.Table;
+  readonly __wbindgen_exn_store: (a: number) => void;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
-  readonly __wbindgen_export_2: WebAssembly.Table;
-  readonly __wbindgen_export_3: WebAssembly.Table;
-  readonly closure16230_externref_shim: (a: number, b: number, c: number) => void;
-  readonly _dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h237ddd4e1ec4c299: (a: number, b: number) => void;
-  readonly closure79142_externref_shim: (a: number, b: number, c: number) => void;
-  readonly _dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h1cf92a970c0a0b7a: (a: number, b: number) => void;
-  readonly closure80324_externref_shim: (a: number, b: number, c: number) => void;
-  readonly closure80325_externref_shim: (a: number, b: number, c: number, d: number) => void;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_exn_store: (a: number) => void;
-  readonly __externref_table_alloc: () => number;
+  readonly __wbindgen_export_6: WebAssembly.Table;
+  readonly closure16233_externref_shim: (a: number, b: number, c: any) => void;
+  readonly _dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h092334bf9f59f039: (a: number, b: number) => void;
+  readonly closure79212_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure80395_externref_shim: (a: number, b: number, c: any) => void;
+  readonly _dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h7eaf48ab7dd75fd8: (a: number, b: number) => void;
+  readonly closure80396_externref_shim: (a: number, b: number, c: any, d: any) => void;
   readonly __wbindgen_start: () => void;
 }
 
