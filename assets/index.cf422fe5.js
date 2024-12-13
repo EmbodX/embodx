@@ -2,8 +2,8 @@ var __getOwnPropNames = Object.getOwnPropertyNames;
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
-var require_index_f174000e = __commonJS({
-  "assets/index.f174000e.js"(exports, module) {
+var require_index_cf422fe5 = __commonJS({
+  "assets/index.cf422fe5.js"(exports, module) {
     (function polyfill() {
       const relList = document.createElement("link").relList;
       if (relList && relList.supports && relList.supports("modulepreload")) {
@@ -315,6 +315,12 @@ var require_index_f174000e = __commonJS({
 ${val.stack}`;
       }
       return className;
+    }
+    function send_device_state_to_bevy(x, y, z, qx, qy, qz, qw) {
+      wasm.send_device_state_to_bevy(x, y, z, qx, qy, qz, qw);
+    }
+    function send_device_control_toggle_to_bevy(control_position, control_orientation) {
+      wasm.send_device_control_toggle_to_bevy(control_position, control_orientation);
     }
     function __wbg_adapter_36(arg02, arg12, arg2) {
       wasm.closure16233_externref_shim(arg02, arg12, arg2);
@@ -2625,7 +2631,11 @@ a {
     document.getElementById("start").addEventListener("click", () => {
       console.log("start");
       document.body.classList.add("playing");
-      __wbg_init();
+      __wbg_init().then(() => {
+        window.send_device_control_toggle_to_bevy = send_device_control_toggle_to_bevy;
+        window.send_device_state_to_bevy = send_device_state_to_bevy;
+        console.log("WASM functions are now available globally");
+      });
     });
     document.querySelector(".back-home-page").addEventListener("click", () => {
       console.log("stop");
@@ -2633,4 +2643,4 @@ a {
     });
   }
 });
-export default require_index_f174000e();
+export default require_index_cf422fe5();
