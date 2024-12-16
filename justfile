@@ -9,6 +9,10 @@ _INFO_LIGHT := "{_BLUE}"
 _SUCCESS := "{_GREEN}{_BOLD}"
 _SUCCESS_LIGHT := "{_GREEN}"
 
+wasm_out_dir := "./www/public/out"
+wasm_path := wasm_out_dir + "/embodx_bg.wasm"
+
+
 # Help command: Display all available recipes
 help:
     just --list
@@ -75,10 +79,10 @@ forward: ## ▶️  Forwards port 3000 to ngrok (to access from mobile on a secu
 # WebAssembly Build
 wasm-build: ## ⚙️  Build wasm version
     cargo build --release --target wasm32-unknown-unknown
-    wasm-bindgen --out-dir ./www/public/out --target web ./target/wasm32-unknown-unknown/release/embodx.wasm
+    wasm-bindgen --out-dir {{wasm_out_dir}} --target web ./target/wasm32-unknown-unknown/release/embodx.wasm
 
 wasm-opt: ## 🔩 Optimize wasm file size
-    wasm-opt -Os -o ./www/public/out/embodx.wasm ./www/public/out/embodx.wasm
+    wasm-opt -Os -o {{wasm_path}} {{wasm_path}}
 
 wasm-build-opt: ## ⚙️  Build wasm version with optimized file size
     just wasm-build
@@ -102,6 +106,9 @@ www-build-only: ## ⚙️  Build vite bundle (doesn't build wasm)
 www-build-opt: ## ⚙️  Build wasm (optimized wasm file size) and build website
     just wasm-build-opt
     just www-build-only
+
+www-deploy:
+    cd www && npm run deploy
 
 www-preview: ## ▶️  Preview website's build
     cd www && npm run preview -- --host --port 3000
