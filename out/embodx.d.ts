@@ -1,6 +1,12 @@
 /* tslint:disable */
 /* eslint-disable */
+/**
+ * expose a function to send device state from js
+ */
 export function send_device_state_to_bevy(x: number, y: number, z: number, qx: number, qy: number, qz: number, qw: number): void;
+/**
+ * expose a function to send device control state from js
+ */
 export function send_device_control_toggle_to_bevy(control_position: boolean, control_orientation: boolean): void;
 export function inject_js(): void;
 
@@ -31,12 +37,12 @@ export interface InitOutput {
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
   readonly __wbindgen_export_6: WebAssembly.Table;
-  readonly closure16233_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure17195_externref_shim: (a: number, b: number, c: any) => void;
   readonly _dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h092334bf9f59f039: (a: number, b: number) => void;
-  readonly closure79144_externref_shim: (a: number, b: number, c: any) => void;
-  readonly closure80327_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure84668_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure85850_externref_shim: (a: number, b: number, c: any) => void;
   readonly _dyn_core__ops__function__FnMut_____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h7eaf48ab7dd75fd8: (a: number, b: number) => void;
-  readonly closure80328_externref_shim: (a: number, b: number, c: any, d: any) => void;
+  readonly closure85851_externref_shim: (a: number, b: number, c: any, d: any) => void;
   readonly __wbindgen_start: () => void;
 }
 
