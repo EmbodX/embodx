@@ -16,5 +16,8 @@ export default defineConfig({
   build: {
     minify: false // temporary, wasm-bindgen js bindings must not be mangled
   },
+    preview: {
+        https: true
+    },
   plugins: [htmlPlugin()]
 })
