@@ -37,7 +37,7 @@ fn insert_skybox(app: &mut App) {
         prelude::*,
         render::render_resource::{TextureViewDescriptor, TextureViewDimension},
     };
-
+    use dimensify::camera::window_camera::FloatingCamera;
     /*
         creating a bevy compatible skybox from a panorama image and not an existing horizontal cross skybox image.
 
@@ -74,6 +74,23 @@ fn insert_skybox(app: &mut App) {
         });
     }
 
+    /// Adds a skybox to a camera when it is added to the world.
+    fn on_demand_add_skybox(
+        new_cam: Trigger<OnAdd, FloatingCamera>,
+        mut commands: Commands,
+        cams: Query<(), (With<FloatingCamera>, Without<Skybox>)>,
+        asset_server: Res<AssetServer>,
+    ) {
+        let new_cam_entity = new_cam.entity();
+        if let Ok(()) = cams.get(new_cam_entity) {
+            let skybox_handle = asset_server.load("texture/skybox_cubemap.jpg");
+            commands.entity(new_cam_entity).insert(Skybox {
+                image: skybox_handle.clone(),
+                brightness: 1000.0,
+            });
+        }
+    }
+
     fn reinterpret_image(
         asset_server: Res<AssetServer>,
         mut commands: Commands,
@@ -107,4 +124,5 @@ fn insert_skybox(app: &mut App) {
         Update,
         reinterpret_image.run_if(resource_exists::<PendingCubemapReinterpret>),
     );
+    app.observe(on_demand_add_skybox);
 }
