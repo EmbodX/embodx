@@ -2,8 +2,7 @@ use bevy::{pbr::DirectionalLightShadowMap, prelude::*, render::camera::CameraUpd
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraSystemSet};
 use dimensify::{
     camera::main_camera::MainCamera,
-    rigidbody::add_floor,
-    robot_vis::visuals::{UrdfLoadRequest, UrdfLoadRequestParams},
+    robot::urdf_loader::{UrdfLoadRequest, UrdfLoadRequestParams},
 };
 use rapier3d::{math::Vector, prelude::SharedShape};
 
@@ -45,7 +44,7 @@ pub fn plugin(app: &mut App) {
                 ),
             ));
         })
-        .add_systems(Update, (animate_light_direction, switch_mode, spin))
+        .add_systems(Update, (animate_light_direction, switch_mode))
         .add_systems(PostStartup, setup_camera_transform)
         .add_systems(
             Update,
@@ -109,129 +108,16 @@ fn setup(
         ..default()
     });
 
-    // FlightHelmet
-    // let helmet_scene = asset_server
-    //     .load(GltfAssetLabel::Scene(0).from_asset("models/FlightHelmet/FlightHelmet.gltf"));
-
-    // commands.spawn(SceneBundle {
-    //     scene: helmet_scene.clone(),
-    //     ..default()
-    // });
-    // commands.spawn(SceneBundle {
-    //     scene: helmet_scene,
-    //     transform: Transform::from_xyz(-4.0, 0.0, -3.0),
-    //     ..default()
-    // });
-
-    // Plane
-    // commands.spawn(PbrBundle {
-    //     mesh: meshes.add(Plane3d::default().mesh().size(50.0, 50.0)),
-    //     material: forward_mat_h.clone(),
-    //     ..default()
-    // });
-
-    // let cube_h = meshes.add(Cuboid::new(0.1, 0.1, 0.1));
-    // let sphere_h = meshes.add(Sphere::new(0.125).mesh().uv(32, 18));
-
-    // // Cubes
-    // commands.spawn(PbrBundle {
-    //     mesh: cube_h.clone(),
-    //     material: forward_mat_h.clone(),
-    //     transform: Transform::from_xyz(-0.3, 0.5, -0.2),
-    //     ..default()
-    // });
-    // commands.spawn(PbrBundle {
-    //     mesh: cube_h,
-    //     material: forward_mat_h,
-    //     transform: Transform::from_xyz(0.2, 0.5, 0.2),
-    //     ..default()
-    // });
-
-    // let sphere_color = Color::srgb(10.0, 4.0, 1.0);
-    // let sphere_pos = Transform::from_xyz(0.4, 0.5, -0.8);
-    // // Emissive sphere
-    // let mut unlit_mat: StandardMaterial = sphere_color.into();
-    // unlit_mat.unlit = true;
-    // commands.spawn((
-    //     PbrBundle {
-    //         mesh: sphere_h.clone(),
-    //         material: materials.add(unlit_mat),
-    //         transform: sphere_pos,
-    //         ..default()
-    //     },
-    //     NotShadowCaster,
-    // ));
-    // // Light
-    // commands.spawn(PointLightBundle {
-    //     point_light: PointLight {
-    //         intensity: 800.0,
-    //         radius: 0.125,
-    //         shadows_enabled: true,
-    //         color: sphere_color,
-    //         ..default()
-    //     },
-    //     transform: sphere_pos,
-    //     ..default()
-    // });
-
-    // // Spheres
-    // for i in 0..6 {
-    //     let j = i % 3;
-    //     let s_val = if i < 3 { 0.0 } else { 0.2 };
-    //     let material = if j == 0 {
-    //         materials.add(StandardMaterial {
-    //             base_color: Color::srgb(s_val, s_val, 1.0),
-    //             perceptual_roughness: 0.089,
-    //             metallic: 0.0,
-    //             ..default()
-    //         })
-    //     } else if j == 1 {
-    //         materials.add(StandardMaterial {
-    //             base_color: Color::srgb(s_val, 1.0, s_val),
-    //             perceptual_roughness: 0.089,
-    //             metallic: 0.0,
-    //             ..default()
-    //         })
-    //     } else {
-    //         materials.add(StandardMaterial {
-    //             base_color: Color::srgb(1.0, s_val, s_val),
-    //             perceptual_roughness: 0.089,
-    //             metallic: 0.0,
-    //             ..default()
-    //         })
-    //     };
-    //     commands.spawn(PbrBundle {
-    //         mesh: sphere_h.clone(),
-    //         material,
-    //         transform: Transform::from_xyz(
-    //             j as f32 * 0.25 + if i < 3 { -0.15 } else { 0.15 } - 0.4,
-    //             0.125,
-    //             -j as f32 * 0.25 + if i < 3 { -0.15 } else { 0.15 } + 0.4,
-    //         ),
-    //         ..default()
-    //     });
-    // }
-
-    // // sky
-    // commands.spawn((
-    //     PbrBundle {
-    //         mesh: meshes.add(Cuboid::new(2.0, 1.0, 1.0)),
-    //         material: materials.add(StandardMaterial {
-    //             base_color: Srgba::hex("888888").unwrap().into(),
-    //             unlit: true,
-    //             cull_mode: None,
-    //             ..default()
-    //         }),
-    //         transform: Transform::from_scale(Vec3::splat(1_000_000.0)),
-    //         ..default()
-    //     },
-    //     NotShadowCaster,
-    //     NotShadowReceiver,
-    // ));
-
     // Example instructions
     commands.spawn(
-        TextBundle::from_section("", TextStyle::default()).with_style(Style {
+        TextBundle::from_section(
+            "",
+            TextStyle {
+                font_size: 15.,
+                ..default()
+            },
+        )
+        .with_style(Style {
             position_type: PositionType::Absolute,
             top: Val::Px(12.0),
             left: Val::Px(12.0),
@@ -261,36 +147,12 @@ struct Spin {
     speed: f32,
 }
 
-fn spin(time: Res<Time>, mut query: Query<(&mut Transform, &Spin)>, pause: Res<Pause>) {
-    if pause.0 {
-        return;
-    }
-    for (mut transform, spin) in query.iter_mut() {
-        transform.rotate_local_y(spin.speed * time.delta_seconds());
-        transform.rotate_local_x(spin.speed * time.delta_seconds());
-        transform.rotate_local_z(-spin.speed * time.delta_seconds());
-    }
-}
-
-#[derive(Resource, Default)]
-enum DefaultRenderMode {
-    #[default]
-    Deferred,
-    Forward,
-    ForwardPrepass,
-}
-
 #[allow(clippy::too_many_arguments)]
 fn switch_mode(
     mut text: Query<&mut Text>,
-    mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
-    mut default_opaque_renderer_method: ResMut<DefaultOpaqueRendererMethod>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    cameras: Query<Entity, With<Camera>>,
     mut pause: ResMut<Pause>,
     mut hide_ui: Local<bool>,
-    mut mode: Local<DefaultRenderMode>,
 ) {
     let mut text = text.single_mut();
     let text = &mut text.sections[0].value;

@@ -59,6 +59,9 @@ __wasm-dev-watch: ## ▶️  Run wasm version in development mode (watch mode)
     cargo watch -q -c -x 'run --target wasm32-unknown-unknown'
 wasm-dev-watch:
     just setup-wasm-envar-then __wasm-dev-watch
+
+wasm-release-watch:
+    cargo watch -q -c -x 'run --target wasm32-unknown-unknown --release'
 ###########################
 
 __wasm-dev-release: ## ▶️  Run wasm version in development mode (no debug mode - lighter bundle)

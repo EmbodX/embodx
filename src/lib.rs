@@ -10,22 +10,12 @@ use bevy::{
 // use bevy_web_asset::WebAssetPlugin;
 use rapier3d::parry::simba::scalar::SupersetOf;
 
-use dimensify::{camera::main_camera::MainCamera, SimPlugin};
+use dimensify::{camera::main_camera::MainCamera, SimDevPlugin, SimPlugin};
 
-// pub mod assets_loader;
-// pub mod camera;
-// pub mod collision_checker;
-// pub mod constants;
-// pub mod graphics;
-// pub mod robot;
-// pub mod robot_vis;
-// pub mod scene;
 pub mod sketching;
-pub mod test_scene;
-// pub mod ui;
 pub mod skybox;
+pub mod test_scene;
 pub mod util;
-// pub mod camera3d;
 
 pub struct RobotSimPlugin;
 
@@ -37,7 +27,9 @@ impl PluginGroup for RobotSimPlugin {
             .add_group(SimPlugin)
             .add(test_scene::plugin)
             .add(sketching::plugin)
-            .add(skybox::plugin);
+            .add(skybox::plugin)
+            // .add(setup)
+            .add_group(SimDevPlugin);
 
         // #[cfg(target_arch = "wasm32")]
         // let primary_window = Some(Window {

@@ -1,7 +1,7 @@
 use bevy::core_pipeline::bloom::{BloomCompositeMode, BloomPrefilterSettings};
 use bevy::transform;
 use bevy_2d_line::LineRenderingPlugin;
-use dimensify::robot_vis::EndEffectorTarget;
+use dimensify::robot::control::end_effector::EndEffectorTarget;
 
 // #[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
 // enum SketchState {
@@ -199,10 +199,15 @@ use bevy::render::view::screenshot::ScreenshotManager;
 
 fn handle_timed_movement(
     mut commands: Commands,
-    mut q_entity: Query<(&mut Transform, &mut TimedMovement, Entity)>,
+    mut q_entity: Query<(
+        &mut Transform,
+        &mut TimedMovement,
+        Option<&mut EndEffectorTarget>,
+        Entity,
+    )>,
     time: Res<Time>,
 ) {
-    for (mut transform, mut timed_movement, entity) in q_entity.iter_mut() {
+    for (mut transform, mut timed_movement, mut ee_target, entity) in q_entity.iter_mut() {
         let current_idx = (timed_movement.current_time / timed_movement.time_step) as usize;
 
         if current_idx >= timed_movement.translations.len() {
@@ -214,6 +219,11 @@ fn handle_timed_movement(
             // transform.translation = transform.translation[0];
         } else {
             transform.translation = timed_movement.translations[current_idx];
+            // we have a special handling for end effector target,
+            // as it consumes its own translation. We will repopulate it with the next posgg.
+            if let Some(ee_target) = ee_target.as_mut() {
+                ee_target.translation = Some(transform.translation);
+            }
             timed_movement.current_time += time.delta_seconds();
         }
     }
@@ -287,12 +297,20 @@ fn handle_move_endeffector(
 
         if event.key_code == KeyCode::KeyG && event.state == ButtonState::Pressed {
             if let Some(line) = line_storage.iter().last() {
-                let target_line: Vec<_> =
-                    line.target_line_pos.iter().map(|ray| ray.clone()).collect();
+                let target_line: Vec<_> = line.target_line_pos.to_vec();
 
+                // FIXME: modify this to add end effector to some link
                 commands
-                    .spawn(EndEffectorTarget)
+                    .spawn(EndEffectorTarget {
+                        translation: Some(*line.target_line_pos.first().unwrap()),
+                        // with_orientation: false,
+                        ..Default::default()
+                    })
                     // .entity(q_end_effector_target.single())
+                    // FIXME implements one that implemente trrait for
+                    // common movement
+                    // follow https://bevyengine.org/examples/gizmos/axes/
+                    // for interpolation
                     .insert(TimedMovement {
                         translations: target_line,
                         time_step: 0.1,
