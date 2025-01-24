@@ -17,7 +17,7 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d::default());
 
     // Define colors using LinearRgba directly
     let colors = [RED, GREEN, BLUE, YELLOW, PURPLE];
@@ -81,7 +81,7 @@ fn generate_gradient(
 }
 
 fn animate_lines(time: Res<Time>, mut query: Query<&mut Line>) {
-    let time_seconds = time.elapsed_seconds();
+    let time_seconds = time.elapsed_secs();
     let movement_factor = 50.0 * time_seconds.sin(); // Simple oscillation amplitude
 
     for mut line in query.iter_mut() {

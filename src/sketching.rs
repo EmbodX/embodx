@@ -1,6 +1,7 @@
-use bevy::core_pipeline::bloom::{BloomCompositeMode, BloomPrefilterSettings};
-use bevy::transform;
+use bevy::core_pipeline::bloom::{Bloom, BloomCompositeMode, BloomPrefilter};
+use bevy::render::view::screenshot::{Screenshot, ScreenshotCaptured};
 use bevy_2d_line::LineRenderingPlugin;
+use bevy_polyline::prelude::{PolylineHandle, PolylineMaterialHandle};
 use dimensify::robot::control::end_effector::EndEffectorTarget;
 
 // #[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
@@ -34,17 +35,14 @@ fn spawn_bloom_sketch_endpoint(
     color: Color,
     transform: Transform,
 ) {
-    commands
-        .spawn(MaterialMesh2dBundle {
-            mesh: meshes.add(Circle::new(18.)).into(),
-            // 4. Put something bright in a dark environment to see the effect
-            material: materials.add(color),
-            transform,
-            ..default()
-        })
-        .insert(RenderLayers::layer(RENDER_LAYER_2D_BLOOM))
-        .insert(SketchingEndPoint)
-        .insert(OnScreenSketching);
+    commands.spawn((
+        Mesh2d(meshes.add(Circle::new(18.))),
+        MeshMaterial2d(materials.add(color)),
+        RenderLayers::layer(RENDER_LAYER_2D_BLOOM),
+        transform,
+        SketchingEndPoint,
+        OnScreenSketching,
+    ));
 }
 
 #[derive(Component)]
@@ -120,12 +118,6 @@ struct Sketched3dLines {
     lines: Vec<Sketch>,
 }
 
-#[derive(Event, Clone, Debug)]
-struct ScreenshotTaken {
-    img: Image,
-    transform: Transform,
-}
-
 #[derive(Component)]
 struct SketchingEndPoint;
 
@@ -150,8 +142,7 @@ pub fn plugin(app: &mut App) {
         //             raycast.debug_cast_ray(cursor_ray, &default(), &mut gizmos);
         //         }
         //     })
-        .add_crossbeam_event::<ScreenshotTaken>()
-        .add_systems(Update, handle_screenshot_taken_event)
+        // .add_systems(Update, handle_screenshot_taken_event)
         .init_resource::<Sketched3dLines>();
 }
 
@@ -178,7 +169,7 @@ fn line_transition_to_target(
             // let diff_len = diff.length();
 
             if movement > 1e-6 {
-                let new_pos = current_pos + diff * time.delta_seconds();
+                let new_pos = current_pos + diff * time.delta_secs();
                 line.vertices[i] = new_pos;
 
                 had_transition = true;
@@ -192,8 +183,6 @@ fn line_transition_to_target(
         }
     }
 }
-
-use bevy::render::view::screenshot::ScreenshotManager;
 
 // ScreenshotReceiver
 
@@ -224,43 +213,53 @@ fn handle_timed_movement(
             if let Some(ee_target) = ee_target.as_mut() {
                 ee_target.translation = Some(transform.translation);
             }
-            timed_movement.current_time += time.delta_seconds();
+            timed_movement.current_time += time.delta_secs();
         }
     }
 }
 
 /// when receiving a screenshot event, spawn a new entity with the screenshot as a texture
 fn handle_screenshot_taken_event(
-    mut screenshot_receiver: EventReader<ScreenshotTaken>,
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut images: ResMut<Assets<Image>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    sketch_line_parts: Query<Entity, Or<(With<Line>, With<SketchingEndPoint>)>>,
+    transform: Transform,
+) -> impl Fn(
+    Trigger<ScreenshotCaptured>,
+    Commands,
+    ResMut<Assets<Mesh>>,
+    ResMut<Assets<Image>>,
+    ResMut<Assets<StandardMaterial>>,
+    Query<Entity, Or<(With<Line>, With<SketchingEndPoint>)>>,
 ) {
-    for event in screenshot_receiver.read() {
+    // returns a closure that handle screenshot taken event
+
+    move |event: Trigger<ScreenshotCaptured>,
+          mut commands: Commands,
+          mut meshes: ResMut<Assets<Mesh>>,
+          mut images: ResMut<Assets<Image>>,
+          mut materials: ResMut<Assets<StandardMaterial>>,
+          sketch_line_parts: Query<Entity, Or<(With<Line>, With<SketchingEndPoint>)>>| {
         // basic rectangle mesh for the image
         let base_img_width = 0.5;
-        let aspect = event.img.height() as f32 / event.img.width() as f32;
+        let aspect = event.0.height() as f32 / event.0.width() as f32;
 
         // spawn the entity with the image as a texture
         commands
-            .spawn(PbrBundle {
-                mesh: meshes.add(Rectangle::new(base_img_width, base_img_width * aspect)),
-                // mesh: meshes.add(Cuboid::new(0.5, 0.35, 0.05).mesh()),
-                material: materials.add(StandardMaterial {
-                    base_color: Color::srgba(0.8, 0.8, 0.98, 0.8),
-                    // base_color: Color::srgba(0.3, 0.3, 0.3, 0.8),
-                    base_color_texture: Some(images.add(event.img.clone())),
-                    alpha_mode: AlphaMode::Blend,
-                    // Remove this if you want it to use the world's lighting.
-                    unlit: true,
-                    ..default()
-                }),
-                ..default()
-            })
+            .spawn(
+                (
+                    Mesh3d(meshes.add(Rectangle::new(base_img_width, base_img_width * aspect))),
+                    MeshMaterial3d(materials.add(StandardMaterial {
+                            base_color: Color::srgba(0.8, 0.8, 0.98, 0.8),
+                            // base_color: Color::srgba(0.3, 0.3, 0.3, 0.8),
+                            base_color_texture: Some(images.add(event.0.clone())),
+                            alpha_mode: AlphaMode::Blend,
+                            // Remove this if you want it to use the world's lighting.
+                            unlit: true,
+                            ..default()
+                        }))
+                )
+
+            )
             .insert(Name::new("Screenshot mesh"))
-            .insert(event.transform)
+            .insert(transform)
             // .insert(NotShadowCaster)
             ;
 
@@ -311,13 +310,16 @@ fn handle_move_endeffector(
                     // common movement
                     // follow https://bevyengine.org/examples/gizmos/axes/
                     // for interpolation
-                    .insert(TimedMovement {
-                        translations: target_line,
-                        time_step: 0.1,
-                        current_time: 0.,
-                        despawn_after: true,
-                    })
-                    .insert(TransformBundle::default());
+                    .insert((
+                        TimedMovement {
+                            translations: target_line,
+                            time_step: 0.1,
+                            current_time: 0.,
+                            despawn_after: true,
+                        },
+                        Transform::default(),
+                        ViewVisibility::default(),
+                    ));
             }
 
             // target_line
@@ -327,7 +329,6 @@ fn handle_move_endeffector(
 
 fn mouse_click_event(
     mut line_storage: ResMut<Sketched3dLines>,
-    screenshot_event_sender: Res<CrossbeamEventSender<ScreenshotTaken>>,
 
     buttons: Res<ButtonInput<MouseButton>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -339,17 +340,16 @@ fn mouse_click_event(
     keys: Res<ButtonInput<KeyCode>>,
 
     mut q_main_camera: Query<
-        (&mut Camera, &mut PanOrbitCamera, &GlobalTransform),
+        (&mut PanOrbitCamera, &GlobalTransform),
         (With<MainCamera>, Without<WindowOverlayCamera>),
     >,
 
     // query to get the window (so we can read the current cursor position)
-    q_window: Query<(Entity, &Window), With<PrimaryWindow>>,
+    q_window: Query<&Window, With<PrimaryWindow>>,
     // query to get camera transform
     mut q_overlay_cam: Query<(&mut Camera, &GlobalTransform), With<WindowOverlayCamera>>,
 
-    mut screenshot_manager: ResMut<ScreenshotManager>,
-
+    // mut screenshot_manager: ResMut<ScreenshotManager>,
     mut polyline_materials: ResMut<Assets<PolylineMaterial>>,
     mut polylines: ResMut<Assets<Polyline>>,
 
@@ -366,13 +366,9 @@ fn mouse_click_event(
     //     raycast.debug_cast_ray(cursor_ray, &default(), &mut gizmos);
     // }
 
-    let (main_window_entity, window) = q_window.single();
-
-    // get the camera info and transform
-    // assuming there is exactly one main camera entity, so Query::single() is OK
+    let window = q_window.single();
     let (overlay_camera, camera_transform): (_, _) = q_overlay_cam.single_mut();
-
-    let (main_camera, mut panorb_cam, main_camera_transform) = q_main_camera.single_mut();
+    let (mut panorb_cam, main_camera_transform) = q_main_camera.single_mut();
 
     let alt_pressed = keys.pressed(KeyCode::AltLeft);
     panorb_cam.enabled = !alt_pressed;
@@ -381,16 +377,13 @@ fn mouse_click_event(
         // if event.state != ButtonState::Pressed {
         //     continue;
         // }
-
-        info!("{:?}", event);
-
         match event.key_code {
             KeyCode::Enter => {
                 if event.state != ButtonState::Pressed {
                     continue;
                 }
 
-                let screenshot_event_sender = screenshot_event_sender.clone();
+                // let screenshot_event_sender = screenshot_event_sender.clone();
 
                 if let Some(line) = line_storage.lines.last_mut() {
                     // if let Some(mut line) = line_storage.lines.pop() {
@@ -400,14 +393,9 @@ fn mouse_click_event(
                     let mut transform = main_camera_transform.compute_transform();
                     transform.translation += main_camera_transform.forward() * 0.5;
 
-                    screenshot_manager
-                        .take_screenshot(main_window_entity, move |image| {
-                            screenshot_event_sender.send(ScreenshotTaken {
-                                transform,
-                                img: image,
-                            });
-                        })
-                        .expect("cannot take screenshot");
+                    commands
+                        .spawn(Screenshot::primary_window())
+                        .observe(handle_screenshot_taken_event(transform));
 
                     // sketching_line.points
 
@@ -415,7 +403,7 @@ fn mouse_click_event(
                         for ray in line.vertices.iter() {
                             commands
                                 .spawn(PolylineBundle {
-                                    polyline: polylines.add(Polyline {
+                                    polyline: PolylineHandle(polylines.add(Polyline {
                                         // FIXME no clone, just pop it
                                         vertices: vec![
                                             ray.origin,
@@ -424,37 +412,22 @@ fn mouse_click_event(
                                         // vertices: vec![-Vec3::ONE, Vec3::ONE],
 
                                         // vertices: Vec::with_capacity(31),
-                                    }),
-                                    material: polyline_materials.add(PolylineMaterial {
-                                        width: 10.,
-                                        // color: Color::srgb(0.8, 0.2, 0.3).to_linear(),
-                                        color: Color::hsl(0.5, 0.2, 0.3).to_linear(),
+                                    })),
+                                    material: PolylineMaterialHandle(polyline_materials.add(
+                                        PolylineMaterial {
+                                            width: 10.,
+                                            // color: Color::srgb(0.8, 0.2, 0.3).to_linear(),
+                                            color: Color::hsl(0.5, 0.2, 0.3).to_linear(),
 
-                                        perspective: true,
-                                        ..Default::default()
-                                    }),
+                                            perspective: true,
+                                            ..Default::default()
+                                        },
+                                    )),
                                     ..Default::default()
                                 })
                                 .insert(OnScreenSketching);
                         }
                     }
-
-                    // commands.spawn(PolylineBundle {
-                    //     polyline: polylines.add(Polyline {
-                    //         // FIXME no clone, just pop it
-                    //         vertices: line.get_bevy_vertices(),
-                    //         // vertices: vec![-Vec3::ONE, Vec3::ONE],
-
-                    //         // vertices: Vec::with_capacity(31),
-                    //     }),
-                    //     material: polyline_materials.add(PolylineMaterial {
-                    //         width: (2.),
-                    //         color: Color::hsl(0.5, 0.2, 0.3).to_linear(),
-                    //         perspective: true,
-                    //         ..Default::default()
-                    //     }),
-                    //     ..Default::default()
-                    // });
                 }
             }
             KeyCode::Backspace => {
@@ -476,13 +449,15 @@ fn mouse_click_event(
 
                         commands.spawn((
                             PolylineBundle {
-                                polyline: polyline_handle.clone(),
-                                material: polyline_materials.add(PolylineMaterial {
-                                    width: (32.),
-                                    color: Color::srgb(0.5, 0.2, 0.9).to_linear(),
-                                    perspective: true,
-                                    ..Default::default()
-                                }),
+                                polyline: PolylineHandle(polyline_handle.clone()),
+                                material: PolylineMaterialHandle(polyline_materials.add(
+                                    PolylineMaterial {
+                                        width: (32.),
+                                        color: Color::srgb(0.5, 0.2, 0.9).to_linear(),
+                                        perspective: true,
+                                        ..Default::default()
+                                    },
+                                )),
                                 ..Default::default()
                             },
                             Name::new("Combined 3d line"),
@@ -537,7 +512,11 @@ fn mouse_click_event(
         // then, ask bevy to convert into world coordinates, and truncate to discard Z
         if let Some(world_position) = window
             .cursor_position()
-            .and_then(|cursor| overlay_camera.viewport_to_world(camera_transform, cursor))
+            .and_then(|cursor| {
+                overlay_camera
+                    .viewport_to_world(camera_transform, cursor)
+                    .ok()
+            })
             .map(|ray| ray.origin.truncate())
         {
             // Circle mesh (start point)
@@ -561,7 +540,11 @@ fn mouse_click_event(
 
         if let Some(world_position) = window
             .cursor_position()
-            .and_then(|cursor| overlay_camera.viewport_to_world(camera_transform, cursor))
+            .and_then(|cursor| {
+                overlay_camera
+                    .viewport_to_world(camera_transform, cursor)
+                    .ok()
+            })
             .map(|ray| ray.origin.truncate())
         {
             // Circle mesh (end point)
@@ -584,69 +567,63 @@ fn mouse_click_event(
 }
 
 use bevy::{
-    core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping},
+    core_pipeline::tonemapping::Tonemapping,
     input::{keyboard::KeyboardInput, ButtonState},
     render::{camera::CameraOutputMode, render_resource::BlendState},
-    sprite::MaterialMesh2dBundle,
 };
 use bevy_2d_line::Line;
 
-fn setup_2d_cam(
-    mut commands: Commands,
-
-    meshes: ResMut<Assets<Mesh>>,
-    materials: ResMut<Assets<ColorMaterial>>,
-) {
+fn setup_2d_cam(mut commands: Commands) {
     commands
         .spawn((
-            Camera2dBundle {
-                camera: Camera {
-                    hdr: true, // 1. HDR is required for bloom
-                    // name: Some("2d".to_string()),
-                    order: 2,
-                    // TODO look into https://github.com/bevyengine/bevy/pull/13419
-                    // clear_color: ClearColorConfig::None,
-                    ///////////
-                    // NOTE:
-                    // With ClearColorConfig::None the render target is not cleared, the only pixel that will be modified are the pixels that are effectively rendered.
-                    // With ClearColorConfig::Custom(Color::NONE) the render target is first cleared with a transparent pixel color, then the rendered pixel are added.
-                    // see https://github.com/bevyengine/bevy/issues/11844#issuecomment-1943534040
-                    clear_color: ClearColorConfig::Custom(Color::NONE),
-                    ///////////
-                    output_mode: CameraOutputMode::Write {
-                        blend_state: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                        // blend_state: Some(BlendState{
+            Camera2d,
+            Camera {
+                hdr: true, // 1. HDR is required for bloom
+                // name: Some("2d".to_string()),
+                order: 2,
+                // TODO look into https://github.com/bevyengine/bevy/pull/13419
+                // clear_color: ClearColorConfig::None,
+                ///////////
+                // NOTE:
+                // With ClearColorConfig::None the render target is not cleared, the only pixel that will be modified are the pixels that are effectively rendered.
+                // With ClearColorConfig::Custom(Color::NONE) the render target is first cleared with a transparent pixel color, then the rendered pixel are added.
+                // see https://github.com/bevyengine/bevy/issues/11844#issuecomment-1943534040
+                clear_color: ClearColorConfig::Custom(Color::NONE),
+                ///////////
+                output_mode: CameraOutputMode::Write {
+                    blend_state: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                    // blend_state: Some(BlendState{
 
-                        //     color: BlendComponent::OVER,
-                        //     // color: BlendComponent {
-                        //     //     src_factor: BlendFactor::One,
-                        //     //     dst_factor: BlendFactor::One,
-                        //     //     operation: BlendOperation::Add,
-                        //     // },
-                        //     alpha: BlendComponent::OVER,
-                        // }),
-                        // blend_state: Some(BlendState::ALPHA_BLENDING),
-                        // blend_state: None,
-                        clear_color: ClearColorConfig::None,
-                        // color_attachment_load_op: LoadOp::Load,
-                        // clear_color: todo!(),
-                    },
-                    ..Default::default()
+                    //     color: BlendComponent::OVER,
+                    //     // color: BlendComponent {
+                    //     //     src_factor: BlendFactor::One,
+                    //     //     dst_factor: BlendFactor::One,
+                    //     //     operation: BlendOperation::Add,
+                    //     // },
+                    //     alpha: BlendComponent::OVER,
+                    // }),
+                    // blend_state: Some(BlendState::ALPHA_BLENDING),
+                    // blend_state: None,
+                    clear_color: ClearColorConfig::None,
+                    // color_attachment_load_op: LoadOp::Load,
+                    // clear_color: todo!(),
                 },
-                tonemapping: Tonemapping::TonyMcMapface, // 2. Using a tonemapper that desaturates to white is recommended
-                ..default()
+                ..Default::default()
             },
+            // 2. Using a tonemapper that desaturates to white is recommended
+            Tonemapping::TonyMcMapface,
             // BloomSettings::default(), // 3. Enable bloom for the camera
-            BloomSettings {
+            Bloom {
                 intensity: 0.15,
                 low_frequency_boost: 0.7,
                 low_frequency_boost_curvature: 0.95,
                 high_pass_frequency: 1.0,
-                prefilter_settings: BloomPrefilterSettings {
+                prefilter: BloomPrefilter {
                     threshold: 0.0,
                     threshold_softness: 0.0,
                 },
                 composite_mode: BloomCompositeMode::EnergyConserving,
+                ..default()
             },
             WindowOverlayCamera,
         ))
@@ -654,59 +631,52 @@ fn setup_2d_cam(
         .insert(Name::new("Camera2dBloom"));
     commands
         .spawn((
-            Camera2dBundle {
-                camera: Camera {
-                    // hdr: true, // 1. HDR is required for bloom
-                    // name: Some("2d".to_string()),
-                    order: 1,
-                    // TODO look into https://github.com/bevyengine/bevy/pull/13419
-                    // clear_color: ClearColorConfig::None,
-                    ///////////
-                    // NOTE:
-                    // With ClearColorConfig::None the render target is not cleared, the only pixel that will be modified are the pixels that are effectively rendered.
-                    // With ClearColorConfig::Custom(Color::NONE) the render target is first cleared with a transparent pixel color, then the rendered pixel are added.
-                    // see https://github.com/bevyengine/bevy/issues/11844#issuecomment-1943534040
-                    clear_color: ClearColorConfig::Custom(Color::NONE),
-                    ///////////
-                    output_mode: CameraOutputMode::Write {
-                        blend_state: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                        // blend_state: Some(BlendState{
+            Name::new("Camera2d overlay"),
+            Camera2d,
+            Camera {
+                // hdr: true, // 1. HDR is required for bloom
+                // name: Some("2d".to_string()),
+                order: 1,
+                // TODO look into https://github.com/bevyengine/bevy/pull/13419
+                // clear_color: ClearColorConfig::None,
+                ///////////
+                // NOTE:
+                // With ClearColorConfig::None the render target is not cleared, the only pixel that will be modified are the pixels that are effectively rendered.
+                // With ClearColorConfig::Custom(Color::NONE) the render target is first cleared with a transparent pixel color, then the rendered pixel are added.
+                // see https://github.com/bevyengine/bevy/issues/11844#issuecomment-1943534040
+                clear_color: ClearColorConfig::Custom(Color::NONE),
+                ///////////
+                output_mode: CameraOutputMode::Write {
+                    blend_state: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                    // blend_state: Some(BlendState{
 
-                        //     color: BlendComponent::OVER,
-                        //     // color: BlendComponent {
-                        //     //     src_factor: BlendFactor::One,
-                        //     //     dst_factor: BlendFactor::One,
-                        //     //     operation: BlendOperation::Add,
-                        //     // },
-                        //     alpha: BlendComponent::OVER,
-                        // }),
-                        // blend_state: Some(BlendState::ALPHA_BLENDING),
-                        // blend_state: None,
-                        clear_color: ClearColorConfig::None,
-                        // color_attachment_load_op: LoadOp::Load,
-                        // clear_color: todo!(),
-                    },
-                    ..Default::default()
+                    //     color: BlendComponent::OVER,
+                    //     // color: BlendComponent {
+                    //     //     src_factor: BlendFactor::One,
+                    //     //     dst_factor: BlendFactor::One,
+                    //     //     operation: BlendOperation::Add,
+                    //     // },
+                    //     alpha: BlendComponent::OVER,
+                    // }),
+                    // blend_state: Some(BlendState::ALPHA_BLENDING),
+                    // blend_state: None,
+                    clear_color: ClearColorConfig::None,
+                    // color_attachment_load_op: LoadOp::Load,
+                    // clear_color: todo!(),
                 },
-                tonemapping: Tonemapping::TonyMcMapface, // 2. Using a tonemapper that desaturates to white is recommended
                 ..default()
             },
-            // WindowOverlayCamera,
+            Tonemapping::TonyMcMapface, // 2. Using a tonemapper that desaturates to white is recommended
+
+                                        // WindowOverlayCamera,
         ))
         // .insert(RenderLayers::layer(RENDER_LAYER_2D_NORMAL))
-        .insert(Name::new("Camera2d"));
-    // commands.spawn(MaterialMesh2dBundle {
-    //     mesh: meshes.add(Rectangle::default()).into(),
-    //     transform: Transform::default().with_scale(Vec3::splat(128.)),
-    //     material: materials.add(Color::from(LinearRgba::RED)),
-    //     ..default()
-    // });
+        ;
 }
 
 use bevy::{math::VectorSpace, prelude::*};
 
 use bevy::window::PrimaryWindow;
-use bevy_crossbeam_event::{CrossbeamEventApp, CrossbeamEventSender};
 use bevy_panorbit_camera::PanOrbitCamera;
 use bevy_polyline::{
     prelude::{Polyline, PolylineBundle, PolylineMaterial},
@@ -728,7 +698,7 @@ fn my_cursor_system(
     q_overlay_cam: Query<(&Camera, &GlobalTransform), With<WindowOverlayCamera>>,
 
     mut q_main_camera: Query<
-        (&mut Camera, &mut PanOrbitCamera, &GlobalTransform),
+        (&mut Camera, &GlobalTransform),
         (With<MainCamera>, Without<WindowOverlayCamera>),
     >,
 ) {
@@ -737,7 +707,7 @@ fn my_cursor_system(
         // assuming there is exactly one main camera entity, so Query::single() is OK
         let (camera, camera_transform) = q_overlay_cam.single();
 
-        let (main_camera, panorb_cam, main_camera_transform) = q_main_camera.single_mut();
+        let (main_camera, main_camera_transform) = q_main_camera.single_mut();
 
         // There is only one primary window, so we can similarly get it from the query:
         let window = q_window.single();
@@ -747,6 +717,7 @@ fn my_cursor_system(
         if let Some(cursor) = window.cursor_position() {
             if let Some(world_position) = camera
                 .viewport_to_world(camera_transform, cursor)
+                .ok()
                 .map(|ray| ray.origin.truncate())
             {
                 // // let mut viewport_pos = cursor_pos_screen;
@@ -770,6 +741,7 @@ fn my_cursor_system(
                     }
                     camera
                         .viewport_to_world(camera_transform, viewport_pos)
+                        .ok()
                         .map(Ray3d::from)
                 }
 

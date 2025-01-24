@@ -46,6 +46,7 @@ fn main() -> Result<()> {
     let mut app = App::new();
     app.add_plugins(WebAssetPlugin {
         cache_resource: true,
+        reject_meta_request: true,
     });
 
     #[allow(unused_mut)] // there are other plugins that are added conditionally

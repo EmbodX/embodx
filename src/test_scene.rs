@@ -4,14 +4,10 @@ use dimensify::{
     camera::main_camera::MainCamera,
     robot::urdf_loader::{UrdfLoadRequest, UrdfLoadRequestParams},
 };
-use rapier3d::{math::Vector, prelude::SharedShape};
 
 use std::f32::consts::*;
 
-use bevy::{
-    core_pipeline::prepass::{DeferredPrepass, DepthPrepass, MotionVectorPrepass, NormalPrepass},
-    pbr::{CascadeShadowConfigBuilder, DefaultOpaqueRendererMethod},
-};
+use bevy::pbr::CascadeShadowConfigBuilder;
 
 pub fn plugin(app: &mut App) {
     app
@@ -74,19 +70,14 @@ pub fn setup_camera_transform(
     cam.zoom_lower_limit = 0.5;
 }
 
-fn setup(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-) {
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((
+        DirectionalLight {
             illuminance: 15_000.,
             shadows_enabled: true,
             ..default()
         },
-        cascade_shadow_config: CascadeShadowConfigBuilder {
+        CascadeShadowConfigBuilder {
             // wgl2 only support 1 cascade
             num_cascades: 1,
             maximum_distance: 20.,
@@ -95,35 +86,30 @@ fn setup(
             // first_cascade_far_bound: 1.,r
             ..default()
         }
-        .into(),
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, PI, -FRAC_PI_4)),
-        // transform: Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, 0.0, -FRAC_PI_4)),
-        ..default()
-    });
+        .build(),
+        Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, PI, -FRAC_PI_4)),
+    ));
     commands.insert_resource(DirectionalLightShadowMap { size: 8192 });
 
-    commands.spawn(SceneBundle {
-        scene: asset_server.load(GltfAssetLabel::Scene(0).from_asset("scene/room_scene.glb")),
-        transform: Transform::from_xyz(0., 0., 1.),
-        ..default()
-    });
+    commands.spawn((
+        SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset("scene/room_scene.glb"))),
+        Transform::from_xyz(0., 0., 1.),
+    ));
 
     // Example instructions
-    commands.spawn(
-        TextBundle::from_section(
-            "",
-            TextStyle {
-                font_size: 15.,
-                ..default()
-            },
-        )
-        .with_style(Style {
+    commands.spawn((
+        Text::default(),
+        TextFont {
+            font_size: 15.,
+            ..default()
+        },
+        Node {
             position_type: PositionType::Absolute,
-            top: Val::Px(12.0),
+            bottom: Val::Px(12.0),
             left: Val::Px(12.0),
             ..default()
-        }),
-    );
+        },
+    ));
 }
 
 #[derive(Resource)]
@@ -138,13 +124,8 @@ fn animate_light_direction(
         return;
     }
     for mut transform in &mut query {
-        transform.rotate_y(time.delta_seconds() * PI / 5.0);
+        transform.rotate_y(time.delta_secs() * PI / 5.0);
     }
-}
-
-#[derive(Component)]
-struct Spin {
-    speed: f32,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -155,7 +136,7 @@ fn switch_mode(
     mut hide_ui: Local<bool>,
 ) {
     let mut text = text.single_mut();
-    let text = &mut text.sections[0].value;
+    let text = &mut text;
 
     text.clear();
 

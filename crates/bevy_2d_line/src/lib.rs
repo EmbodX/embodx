@@ -10,9 +10,10 @@ use bevy::{
             AsBindGroup, RenderPipelineDescriptor, ShaderRef, SpecializedMeshPipelineError,
             VertexBufferLayout, VertexFormat, VertexStepMode,
         },
+        sync_world::RenderEntity,
         Extract, RenderApp,
     },
-    sprite::{Material2d, Material2dKey, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle},
+    sprite::{Material2d, Material2dKey, Material2dPlugin},
     utils::HashMap,
 };
 
@@ -84,7 +85,7 @@ fn update_line_meshes(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<LineMaterial>>,
     mut material_cache: Local<HashMap<u32, Handle<LineMaterial>>>,
-    query: Query<(Entity, &Line, Option<&Mesh2dHandle>), Changed<Line>>,
+    query: Query<(Entity, &Line, Option<&Mesh2d>), Changed<Line>>,
 ) {
     for (entity, line, maybe_mesh_handle) in query.iter() {
         if line.points.len() < 2 || line.colors.len() != line.points.len() {
@@ -116,7 +117,7 @@ fn update_line_meshes(
                     Vec::<[f32; 4]>::with_capacity(attribute_size),
                 );
 
-                let mesh_handle = Mesh2dHandle(meshes.add(mesh));
+                let mesh_handle = meshes.add(mesh);
                 let id = mesh_handle.id();
 
                 let material_handle = if let Some(cached) = material_cache.get(&rounded_key) {
@@ -129,19 +130,17 @@ fn update_line_meshes(
                     &handle.clone()
                 };
 
-                commands.entity(entity).insert(MaterialMesh2dBundle {
-                    mesh: mesh_handle,
-                    material: material_handle.clone(),
-                    ..default()
-                });
+                commands
+                    .entity(entity)
+                    .insert((Mesh2d(mesh_handle), MeshMaterial2d(material_handle.clone())));
 
                 meshes.get_mut(id).unwrap()
             }
         };
 
         let mut resize = false;
-        mesh.attributes_mut().for_each(|(id, values)| {
-            match id {
+        mesh.attributes_mut().for_each(|(vertex_attr, values)| {
+            match vertex_attr.id {
                 id if id == ATTRIBUTE_POSITION.id => {
                     if values.len() != attribute_size {
                         resize = true; // we can check in any of these, they will all change at the same time
@@ -191,8 +190,8 @@ fn update_line_meshes(
                 (miter, length)
             };
 
-            mesh.attributes_mut().for_each(|(id, values)| {
-                match id {
+            mesh.attributes_mut().for_each(|(vertex_attr, values)| {
+                match vertex_attr.id {
                     id if id == ATTRIBUTE_POSITION.id => {
                         match values {
                             VertexAttributeValues::Float32x3(ref mut v) => {
@@ -260,8 +259,8 @@ fn update_line_meshes(
     }
 }
 
-fn extract_lines(mut commands: Commands, query: Extract<Query<(Entity, &Line)>>) {
+fn extract_lines(mut commands: Commands, query: Extract<Query<(RenderEntity, &Line)>>) {
     for (entity, line) in query.iter() {
-        commands.get_or_spawn(entity).insert(line.clone());
+        commands.entity(entity).insert(line.clone());
     }
 }

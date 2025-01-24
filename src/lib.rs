@@ -1,16 +1,8 @@
-use bevy::{
-    app::PluginGroupBuilder,
-    asset::LoadState,
-    log::LogPlugin,
-    prelude::*,
-    render::render_resource::{TextureViewDescriptor, TextureViewDimension},
-    transform::commands,
-};
+use bevy::{app::PluginGroupBuilder, prelude::*};
 // use bevy_egui::EguiPlugin;
 // use bevy_web_asset::WebAssetPlugin;
-use rapier3d::parry::simba::scalar::SupersetOf;
 
-use dimensify::{camera::main_camera::MainCamera, SimDevPlugin, SimPlugin};
+use dimensify::{SimDevPlugin, SimPlugin};
 
 pub mod sketching;
 pub mod skybox;
